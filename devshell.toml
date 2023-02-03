@@ -1,0 +1,16 @@
+# https://numtide.github.io/devshell
+[devshell]
+packages = [
+         "cargo",
+         "cargo-flamegraph",
+         "clippy",
+         "gcc",
+         "gdb",
+         "rust-analyzer",
+         "rustc",
+         "rustfmt",
+]
+
+[[commands]]
+package = "devshell.cli"
+help = "Per project developer environments"
