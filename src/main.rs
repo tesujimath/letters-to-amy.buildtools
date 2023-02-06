@@ -10,7 +10,7 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    if let Err(e) = bible::dump_all() {
+    if let Err(e) = hugo::dump_all() {
         println!("dump_all failed: {:?}", e);
         ExitCode::FAILURE
     } else {
@@ -19,3 +19,4 @@ fn main() -> ExitCode {
 }
 
 mod bible;
+mod hugo;
