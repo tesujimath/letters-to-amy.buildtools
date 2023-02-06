@@ -8,6 +8,13 @@ pub fn extract_bible_refs(text: &str) {
     }
 
     for cap in BIBLE_REF_RE.captures_iter(text) {
-        println!("matched {}-{} {}", &cap[1], &cap[2], &cap[3])
+        let book = if cap[1].is_empty() {
+            cap[2].to_string()
+        } else {
+            format!("{} {}", &cap[1], &cap[2])
+        };
+        let verses = &cap[3];
+
+        println!("matched {} {}", book, verses);
     }
 }
