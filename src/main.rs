@@ -10,7 +10,7 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    if let Err(e) = hugo::dump_all() {
+    if let Err(e) = hugo::dump_posts() {
         println!("dump_all failed: {:?}", e);
         ExitCode::FAILURE
     } else {
