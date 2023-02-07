@@ -82,7 +82,7 @@ fn book_list() -> &'static Vec<Vec<&'static str>> {
     &BOOK_LIST
 }
 
-fn normalize_book(raw: &str) -> Option<&'static str> {
+fn get_book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     lazy_static! {
         static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_list()
             .iter()
@@ -95,7 +95,18 @@ fn normalize_book(raw: &str) -> Option<&'static str> {
             .collect();
     }
 
-    CANONICAL_MAP.get(raw).copied()
+    match (prefix, alias) {
+        (Some(prefix), Some(alias)) => {
+            let raw_book = if prefix.is_empty() {
+                alias.to_string()
+            } else {
+                format!("{} {}", prefix, alias)
+            };
+
+            CANONICAL_MAP.get(&raw_book as &str).copied()
+        }
+        _ => None,
+    }
 }
 
 /// accumulated references, by book
@@ -120,6 +131,12 @@ impl References {
     }
 }
 
+#[derive(Debug)]
+struct ChapterContext<'a> {
+    book: &'a str,
+    chapter: &'a str,
+}
+
 pub fn extract_bible_refs(text: &str) {
     lazy_static! {
         // TODO a reference may be either:
@@ -127,10 +144,36 @@ pub fn extract_bible_refs(text: &str) {
         // 2. book chapter:verses, which we extract
         // 3. verse, which we extract using the stored context
         static ref REFERENCE_RE: Regex =
-            Regex::new(r"([1-3]?)\s*([[:alpha:]]+)\s*(\d+:[\d:,\s-]+)").unwrap();
+            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();
     }
 
+    let mut chapter_context: Option<ChapterContext> = None;
+
     for cap in REFERENCE_RE.captures_iter(text) {
+        let fields = cap
+            .iter()
+            .skip(1)
+            .map(|m_o| m_o.map(|m| m.as_str()))
+            .collect::<Vec<Option<&str>>>();
+
+        println!("{:?}", fields);
+
+        let book = get_book(fields[3], fields[4]);
+        let chapter = fields[5];
+        if let (Some(book), Some(chapter)) = (book, chapter) {
+            chapter_context = Some(ChapterContext { book, chapter })
+        }
+
+        let verses = match (fields[1], fields[7]) {
+            (Some(_), Some(_)) => panic!("not possible to have both verse alternatives"),
+            (Some(v), None) => extract_multiple_verses(v),
+            (None, Some(v)) => extract_multiple_verses(v),
+            (None, None) => Ok(vec![]),
+        };
+
+        println!("B: {:?} {:?}", chapter_context, verses);
+
+        /*
         let raw_book = if cap[1].is_empty() {
             cap[2].to_string()
         } else {
@@ -141,12 +184,13 @@ pub fn extract_bible_refs(text: &str) {
             Some(book) => {
                 let c_and_v = ChapterAndVerses::from_str(&cap[3]);
 
-                println!("matched {} {:?}", book, c_and_v);
+                // TODO println!("matched {} {:?}", book, c_and_v);
             }
             None => {
-                println!("WARNING: unknown book {}", &raw_book);
+                // TODO println!("WARNING: unknown book {}", &raw_book);
             }
         }
+        */
     }
 }
 
