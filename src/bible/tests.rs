@@ -3,6 +3,55 @@
 use super::*;
 
 #[test]
+fn test_references_insert() {
+    fn insert(r: &mut References, book: &'static str, verses: &str) {
+        r.insert(book, ChapterAndVerses::from_str(verses).unwrap());
+    }
+
+    const b1: &str = "Genesis";
+    const b2: &str = "Exodus";
+
+    let mut r = References::new();
+
+    insert(&mut r, b1, "12:7");
+    insert(&mut r, b1, "12:6");
+    insert(&mut r, b2, "10:3-9");
+    insert(&mut r, b2, "10:4");
+
+    assert_eq!(
+        r,
+        References(HashMap::from([
+            (
+                b1,
+                vec![
+                    ChapterAndVerses {
+                        chapter: 12,
+                        verses: vec![Verses::Single(6)]
+                    },
+                    ChapterAndVerses {
+                        chapter: 12,
+                        verses: vec![Verses::Single(7)]
+                    },
+                ]
+            ),
+            (
+                b2,
+                vec![
+                    ChapterAndVerses {
+                        chapter: 10,
+                        verses: vec![Verses::Range(3, 9)]
+                    },
+                    ChapterAndVerses {
+                        chapter: 10,
+                        verses: vec![Verses::Single(4)]
+                    },
+                ]
+            ),
+        ]))
+    );
+}
+
+#[test]
 fn test_chapter_and_verses_from_str() {
     assert_eq!(
         ChapterAndVerses::from_str("4:8"),
@@ -49,4 +98,16 @@ fn test_verses_from_str() {
     assert_eq!(Verses::from_str(" 8  "), Ok(Verses::Single(8)));
     assert_eq!(Verses::from_str(" 13   - 17 "), Ok(Verses::Range(13, 17)));
     assert!(Verses::from_str("abc").is_err());
+}
+
+#[test]
+fn test_extract_verses() {
+    assert_eq!(
+        extract_multiple_verses("4, 2, 1-7"),
+        Ok(vec![
+            Verses::Range(1, 7),
+            Verses::Single(2),
+            Verses::Single(4)
+        ])
+    );
 }

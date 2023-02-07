@@ -1,14 +1,15 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::{
+    cmp::Ordering,
     collections::HashMap,
     fmt::{self, Display, Formatter},
     str::FromStr,
 };
 
-fn normalize_book(raw: &str) -> Option<&'static str> {
+fn book_list() -> &'static Vec<Vec<&'static str>> {
     lazy_static! {
-        static ref book_list: Vec<Vec<&'static str>> = vec![
+        static ref BOOK_LIST: Vec<Vec<&'static str>> = vec![
             vec!["Genesis", "Gen"],
             vec!["Exodus"],
             vec!["Leviticus"],
@@ -76,7 +77,14 @@ fn normalize_book(raw: &str) -> Option<&'static str> {
             vec!["Jude"],
             vec!["Revelation", "Rev"],
         ];
-        static ref canonical: HashMap<&'static str, &'static str> = book_list
+    }
+
+    &BOOK_LIST
+}
+
+fn normalize_book(raw: &str) -> Option<&'static str> {
+    lazy_static! {
+        static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_list()
             .iter()
             .flat_map(|aliases| {
                 aliases
@@ -87,7 +95,29 @@ fn normalize_book(raw: &str) -> Option<&'static str> {
             .collect();
     }
 
-    canonical.get(raw).copied()
+    CANONICAL_MAP.get(raw).copied()
+}
+
+/// accumulated references, by book
+#[derive(PartialEq, Eq, Debug)]
+struct References(HashMap<&'static str, Vec<ChapterAndVerses>>);
+
+impl References {
+    fn new() -> References {
+        References(HashMap::new())
+    }
+
+    /// insert verses for book, maintaining order
+    fn insert(&mut self, book: &'static str, verses: ChapterAndVerses) {
+        match self.0.get_mut(book) {
+            Some(v) => match v.binary_search(&verses) {
+                Ok(u) | Err(u) => v.insert(u, verses),
+            },
+            None => {
+                self.0.insert(book, vec![verses]);
+            }
+        }
+    }
 }
 
 pub fn extract_bible_refs(text: &str) {
@@ -149,7 +179,7 @@ impl FromStr for ChapterAndVerses {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split_once(':') {
-            Some((s1, s2)) => match (s1.trim().parse::<u8>(), extract_verses(s2.trim())) {
+            Some((s1, s2)) => match (s1.trim().parse::<u8>(), extract_multiple_verses(s2.trim())) {
                 (Ok(c), Ok(vv)) => Ok(ChapterAndVerses {
                     chapter: c,
                     verses: vv,
@@ -163,10 +193,37 @@ impl FromStr for ChapterAndVerses {
     }
 }
 
+impl PartialOrd for ChapterAndVerses {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.chapter.cmp(&other.chapter) {
+            Ordering::Equal => Some(self.verses[0].cmp(&other.verses[0])),
+            o => Some(o),
+        }
+    }
+}
+
+impl Ord for ChapterAndVerses {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.chapter.cmp(&other.chapter) {
+            Ordering::Equal => self.verses[0].cmp(&other.verses[0]),
+            o => o,
+        }
+    }
+}
+
 #[derive(Eq, PartialEq, Debug)]
 enum Verses {
     Single(u8),
     Range(u8, u8),
+}
+
+impl Verses {
+    fn first(&self) -> u8 {
+        match self {
+            Verses::Single(u) => *u,
+            Verses::Range(u, _) => *u,
+        }
+    }
 }
 
 impl FromStr for Verses {
@@ -191,6 +248,18 @@ impl FromStr for Verses {
     }
 }
 
+impl PartialOrd for Verses {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.first().cmp(&other.first()))
+    }
+}
+
+impl Ord for Verses {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.first().cmp(&other.first())
+    }
+}
+
 impl Display for Verses {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
@@ -200,7 +269,8 @@ impl Display for Verses {
     }
 }
 
-fn extract_verses(text: &str) -> Result<Vec<Verses>, ParseError> {
+/// extract verses from the text, and return in order
+fn extract_multiple_verses(text: &str) -> Result<Vec<Verses>, ParseError> {
     fn verses_from_str_or_none(s: &str) -> Option<Result<Verses, ParseError>> {
         (!s.trim().is_empty()).then_some(Verses::from_str(s))
     }
@@ -208,6 +278,10 @@ fn extract_verses(text: &str) -> Result<Vec<Verses>, ParseError> {
     text.split(',')
         .filter_map(verses_from_str_or_none)
         .collect::<Result<Vec<Verses>, ParseError>>()
+        .map(|mut v| {
+            v.sort();
+            v
+        })
 }
 
 mod tests;
