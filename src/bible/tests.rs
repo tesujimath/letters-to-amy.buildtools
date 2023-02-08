@@ -8,21 +8,21 @@ fn test_references_insert() {
         r.insert(book, ChapterAndVerses::from_str(verses).unwrap());
     }
 
-    const b1: &str = "Genesis";
-    const b2: &str = "Exodus";
+    const B1: &str = "Genesis";
+    const B2: &str = "Exodus";
 
     let mut r = References::new();
 
-    insert(&mut r, b1, "12:7");
-    insert(&mut r, b1, "12:6");
-    insert(&mut r, b2, "10:3-9");
-    insert(&mut r, b2, "10:4");
+    insert(&mut r, B1, "12:7");
+    insert(&mut r, B1, "12:6");
+    insert(&mut r, B2, "10:3-9");
+    insert(&mut r, B2, "10:4");
 
     assert_eq!(
         r,
         References(HashMap::from([
             (
-                b1,
+                B1,
                 vec![
                     ChapterAndVerses {
                         chapter: 12,
@@ -35,7 +35,7 @@ fn test_references_insert() {
                 ]
             ),
             (
-                b2,
+                B2,
                 vec![
                     ChapterAndVerses {
                         chapter: 10,

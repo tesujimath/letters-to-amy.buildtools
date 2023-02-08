@@ -1,7 +1,9 @@
 use super::bible::extract_bible_refs;
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Deserialize;
 use std::convert::AsRef;
+use std::fmt;
 use std::fs::DirEntry;
 use std::fs::File;
 use std::io::Read;
@@ -40,7 +42,10 @@ where
                     let mut content = String::new();
                     f.read_to_string(&mut content)?;
 
-                    extract_bible_refs(skip_header(&content));
+                    match get_header_and_body(&content) {
+                        Ok((title, body)) => extract_bible_refs(body),
+                        Err(e) => println!("failed to get title and body: {}", e),
+                    }
                 }
             }
         }
@@ -49,14 +54,44 @@ where
     Ok(())
 }
 
-fn skip_header(text: &str) -> &str {
+#[derive(Deserialize, PartialEq, Eq, Debug)]
+struct Header {
+    title: String,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+enum GetHeaderAndBodyErr {
+    NoHeader,
+    TomlError(toml::de::Error),
+}
+
+impl fmt::Display for GetHeaderAndBodyErr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "GetHeaderAndBodyErr::{}",
+            match self {
+                Self::NoHeader => "NoHeader".to_string(),
+                Self::TomlError(e) => format!("TomlError: {}", e),
+            }
+        )
+    }
+}
+
+fn get_header_and_body(text: &str) -> Result<(Header, &str), GetHeaderAndBodyErr> {
     lazy_static! {
-        static ref HEADER_RE: Regex = Regex::new(r"\+\+\+(?s:.*)\+\+\+").unwrap();
+        static ref HEADER_RE: Regex = Regex::new(r"(?s)\+\+\+(.*)(\+\+\+)").unwrap();
     }
 
-    match HEADER_RE.find(text) {
-        Some(m) => &text[m.end()..],
-        None => text,
+    match HEADER_RE.captures(text) {
+        Some(cap) => {
+            let body = &text[cap.get(2).unwrap().end()..];
+            match toml::from_str::<Header>(&cap[1]) {
+                Ok(header) => Ok((header, body)),
+                Err(e) => Err(GetHeaderAndBodyErr::TomlError(e)),
+            }
+        }
+        None => Err(GetHeaderAndBodyErr::NoHeader),
     }
 }
 
