@@ -34,35 +34,13 @@ fn get_book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     }
 }
 
-/// accumulated references, by book
-#[derive(PartialEq, Eq, Debug)]
-struct References(HashMap<&'static str, Vec<ChapterAndVerses>>);
-
-impl References {
-    fn new() -> References {
-        References(HashMap::new())
-    }
-
-    /// insert verses for book, maintaining order
-    fn insert(&mut self, book: &'static str, verses: ChapterAndVerses) {
-        match self.0.get_mut(book) {
-            Some(v) => match v.binary_search(&verses) {
-                Ok(u) | Err(u) => v.insert(u, verses),
-            },
-            None => {
-                self.0.insert(book, vec![verses]);
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 struct ChapterContext<'a> {
     book: &'a str,
-    chapter: &'a str,
+    chapter: u8,
 }
 
-pub fn extract_bible_refs(text: &str) {
+pub fn get_references(text: &str) -> References {
     lazy_static! {
         // TODO a reference may be either:
         // 1. book chapter, which we use for later context
@@ -72,6 +50,7 @@ pub fn extract_bible_refs(text: &str) {
             Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();
     }
 
+    let mut references = References::new();
     let mut chapter_context: Option<ChapterContext> = None;
 
     for cap in REFERENCE_RE.captures_iter(text) {
@@ -84,39 +63,39 @@ pub fn extract_bible_refs(text: &str) {
         println!("{:?}", fields);
 
         let book = get_book(fields[3], fields[4]);
-        let chapter = fields[5];
-        if let (Some(book), Some(chapter)) = (book, chapter) {
-            chapter_context = Some(ChapterContext { book, chapter })
+        let chapter_str = fields[5];
+        if let (Some(book), Some(chapter_str)) = (book, chapter_str) {
+            chapter_context = Some(ChapterContext {
+                book,
+                chapter: chapter_str.parse::<u8>().unwrap(),
+            })
         }
 
         let verses = match (fields[1], fields[7]) {
             (Some(_), Some(_)) => panic!("not possible to have both verse alternatives"),
-            (Some(v), None) => extract_multiple_verses(v),
-            (None, Some(v)) => extract_multiple_verses(v),
+            (Some(v), None) => get_verses(v),
+            (None, Some(v)) => get_verses(v),
             (None, None) => Ok(vec![]),
         };
 
-        println!("B: {:?} {:?}", chapter_context, verses);
+        println!("B: {:?} {:?}", &chapter_context, &verses);
 
-        /*
-        let raw_book = if cap[1].is_empty() {
-            cap[2].to_string()
-        } else {
-            format!("{} {}", &cap[1], &cap[2])
-        };
-
-        match normalize_book(&raw_book) {
-            Some(book) => {
-                let c_and_v = ChapterAndVerses::from_str(&cap[3]);
-
-                // TODO println!("matched {} {:?}", book, c_and_v);
+        match (chapter_context, verses) {
+            (Some(ref ctx), Ok(verses)) => {
+                if !verses.is_empty() {
+                    references.insert(ctx.book, ChapterAndVerses::new(ctx.chapter, verses));
+                }
             }
-            None => {
-                // TODO println!("WARNING: unknown book {}", &raw_book);
+            (None, Ok(verses)) => {
+                println!("WARNING: no context for verses {:?}", verses);
+            }
+            (_, Err(e)) => {
+                println!("WARNING: error getting verses {}", e);
             }
         }
-        */
     }
+
+    references
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -137,28 +116,42 @@ impl Display for ParseError {
     }
 }
 
+/// accumulated references, by book
+#[derive(PartialEq, Eq, Debug)]
+pub struct References(HashMap<&'static str, Vec<ChapterAndVerses>>);
+
+impl References {
+    fn new() -> References {
+        References(HashMap::new())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// insert verses for book, maintaining order
+    fn insert(&mut self, book: &'static str, verses: ChapterAndVerses) {
+        match self.0.get_mut(book) {
+            Some(v) => match v.binary_search(&verses) {
+                Ok(u) | Err(u) => v.insert(u, verses),
+            },
+            None => {
+                self.0.insert(book, vec![verses]);
+            }
+        }
+    }
+}
+
 #[derive(Eq, PartialEq, Debug)]
 struct ChapterAndVerses {
     chapter: u8,
     verses: Vec<Verses>,
 }
 
-impl FromStr for ChapterAndVerses {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.split_once(':') {
-            Some((s1, s2)) => match (s1.trim().parse::<u8>(), extract_multiple_verses(s2.trim())) {
-                (Ok(c), Ok(vv)) => Ok(ChapterAndVerses {
-                    chapter: c,
-                    verses: vv,
-                }),
-                (Err(ec), Err(ev)) => Err(ParseError(format!("chapter: {}, verses: {}", ec, ev))),
-                (Err(ec), _) => Err(ParseError::new(ec)),
-                (_, Err(ev)) => Err(ParseError::new(ev)),
-            },
-            None => Err(ParseError::new("missing colon")),
-        }
+impl ChapterAndVerses {
+    fn new(chapter: u8, verses: Vec<Verses>) -> ChapterAndVerses {
+        assert!(!verses.is_empty());
+        ChapterAndVerses { chapter, verses }
     }
 }
 
@@ -238,8 +231,8 @@ impl Display for Verses {
     }
 }
 
-/// extract verses from the text, and return in order
-fn extract_multiple_verses(text: &str) -> Result<Vec<Verses>, ParseError> {
+/// get verses from the text, and return in order
+fn get_verses(text: &str) -> Result<Vec<Verses>, ParseError> {
     fn verses_from_str_or_none(s: &str) -> Option<Result<Verses, ParseError>> {
         (!s.trim().is_empty()).then_some(Verses::from_str(s))
     }

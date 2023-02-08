@@ -101,9 +101,9 @@ fn test_verses_from_str() {
 }
 
 #[test]
-fn test_extract_verses() {
+fn test_get_verses() {
     assert_eq!(
-        extract_multiple_verses("4, 2, 1-7"),
+        get_verses("4, 2, 1-7"),
         Ok(vec![
             Verses::Range(1, 7),
             Verses::Single(2),

@@ -1,4 +1,4 @@
-use super::bible::extract_bible_refs;
+use super::bible::get_references;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
@@ -43,7 +43,15 @@ where
                     f.read_to_string(&mut content)?;
 
                     match get_header_and_body(&content) {
-                        Ok((title, body)) => extract_bible_refs(body),
+                        Ok((header, body)) => {
+                            let r = get_references(body);
+                            if !&r.is_empty() {
+                                println!(
+                                    "references for {:?} titled '{}'",
+                                    entry_relpath, &header.title
+                                );
+                            }
+                        }
                         Err(e) => println!("failed to get title and body: {}", e),
                     }
                 }
