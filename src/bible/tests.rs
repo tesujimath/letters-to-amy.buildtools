@@ -4,14 +4,14 @@ use super::*;
 
 #[test]
 fn test_references_insert() {
-    fn insert(r: &mut References, book: &'static str, verses: &str) {
+    fn insert(r: &mut ChapterAndVersesByBook, book: &'static str, verses: &str) {
         r.insert(book, ChapterAndVerses::from_str(verses).unwrap());
     }
 
     const B1: &str = "Genesis";
     const B2: &str = "Exodus";
 
-    let mut r = References::new();
+    let mut r = ChapterAndVersesByBook::new();
 
     insert(&mut r, B1, "12:7");
     insert(&mut r, B1, "12:6");
@@ -20,7 +20,7 @@ fn test_references_insert() {
 
     assert_eq!(
         r,
-        References(HashMap::from([
+        ChapterAndVersesByBook(HashMap::from([
             (
                 B1,
                 vec![

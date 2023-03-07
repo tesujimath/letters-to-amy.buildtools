@@ -40,7 +40,7 @@ struct ChapterContext<'a> {
     chapter: u8,
 }
 
-pub fn get_references(text: &str) -> References {
+pub fn get_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
     lazy_static! {
         // TODO a reference may be either:
         // 1. book chapter, which we use for later context
@@ -50,7 +50,7 @@ pub fn get_references(text: &str) -> References {
             Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();
     }
 
-    let mut references = References::new();
+    let mut references = ChapterAndVersesByBook::new();
     let mut chapter_context: Option<ChapterContext> = None;
 
     for cap in REFERENCE_RE.captures_iter(text) {
@@ -118,11 +118,11 @@ impl Display for ParseError {
 
 /// accumulated references, by book
 #[derive(PartialEq, Eq, Debug)]
-pub struct References(HashMap<&'static str, Vec<ChapterAndVerses>>);
+pub struct ChapterAndVersesByBook(HashMap<&'static str, Vec<ChapterAndVerses>>);
 
-impl References {
-    fn new() -> References {
-        References(HashMap::new())
+impl ChapterAndVersesByBook {
+    fn new() -> ChapterAndVersesByBook {
+        ChapterAndVersesByBook(HashMap::new())
     }
 
     pub fn is_empty(&self) -> bool {

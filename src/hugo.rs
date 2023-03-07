@@ -1,4 +1,4 @@
-use super::bible::get_references;
+use super::bible::get_chapter_and_verses_by_book;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
@@ -44,7 +44,7 @@ where
 
                     match get_header_and_body(&content) {
                         Ok((header, body)) => {
-                            let r = get_references(body);
+                            let r = get_chapter_and_verses_by_book(body);
                             if !&r.is_empty() {
                                 println!(
                                     "references for {:?} titled '{}'",
