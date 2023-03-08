@@ -17,11 +17,11 @@ impl<T> Span<T>
 where
     T: PartialOrd + Add<Output = T> + One + Copy,
 {
-    fn at(x: T) -> Span<T> {
+    pub fn at(x: T) -> Span<T> {
         Span::Point(x)
     }
 
-    fn between(from: T, to: T) -> Span<T> {
+    pub fn between(from: T, to: T) -> Span<T> {
         assert!(from <= to);
 
         Span::Line(from, to)
@@ -107,6 +107,7 @@ where
 }
 
 /// An ordered Vec of Spans, minimally coalesced
+#[derive(Eq, PartialEq, Debug)]
 pub struct Spans<T>(Vec<Span<T>>);
 
 enum Touchingness {
@@ -116,7 +117,7 @@ enum Touchingness {
 }
 
 impl<T> Spans<T> {
-    fn new() -> Spans<T> {
+    pub fn new() -> Spans<T> {
         Spans(Vec::new())
     }
 
@@ -138,7 +139,7 @@ impl<T> Spans<T> {
         }
     }
 
-    fn insert(&mut self, item: Span<T>)
+    pub fn insert(&mut self, item: Span<T>)
     where
         T: Ord + Add<Output = T> + One + Copy + fmt::Display,
     {
@@ -163,6 +164,19 @@ impl<T> Spans<T> {
                     }
                 }
             }
+        }
+    }
+}
+
+impl<T> PartialOrd for Spans<T>
+where
+    T: Add<Output = T> + One + Copy + Ord,
+{
+    fn partial_cmp(&self, other: &Spans<T>) -> Option<Ordering> {
+        if self.0.is_empty() || other.0.is_empty() {
+            None
+        } else {
+            Some(self.0[0].cmp(&other.0[0]))
         }
     }
 }

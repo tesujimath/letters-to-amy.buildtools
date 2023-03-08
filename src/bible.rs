@@ -1,3 +1,4 @@
+use super::span::{Span, Spans};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::{
@@ -75,24 +76,10 @@ pub fn get_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
             (Some(_), Some(_)) => panic!("not possible to have both verse alternatives"),
             (Some(v), None) => get_verses(v),
             (None, Some(v)) => get_verses(v),
-            (None, None) => Ok(vec![]),
+            (None, None) => Ok(VSpans::new()),
         };
 
         println!("B: {:?} {:?}", &chapter_context, &verses);
-
-        match (chapter_context, verses) {
-            (Some(ref ctx), Ok(verses)) => {
-                if !verses.is_empty() {
-                    references.insert(ctx.book, ChapterAndVerses::new(ctx.chapter, verses));
-                }
-            }
-            (None, Ok(verses)) => {
-                println!("WARNING: no context for verses {:?}", verses);
-            }
-            (_, Err(e)) => {
-                println!("WARNING: error getting verses {}", e);
-            }
-        }
     }
 
     references
@@ -128,48 +115,88 @@ impl ChapterAndVersesByBook {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-
-    /// insert verses for book, maintaining order
-    fn insert(&mut self, book: &'static str, verses: ChapterAndVerses) {
-        match self.0.get_mut(book) {
-            Some(v) => match v.binary_search(&verses) {
-                Ok(u) | Err(u) => v.insert(u, verses),
-            },
-            None => {
-                self.0.insert(book, vec![verses]);
-            }
-        }
-    }
 }
 
 #[derive(Eq, PartialEq, Debug)]
 struct ChapterAndVerses {
     chapter: u8,
-    verses: Vec<Verses>,
+    verses: VSpans,
 }
 
 impl ChapterAndVerses {
-    fn new(chapter: u8, verses: Vec<Verses>) -> ChapterAndVerses {
-        assert!(!verses.is_empty());
+    fn new(chapter: u8, verses: VSpans) -> ChapterAndVerses {
+        // TODO ?? assert!(!verses.is_empty());
         ChapterAndVerses { chapter, verses }
     }
 }
 
-impl PartialOrd for ChapterAndVerses {
+/// Span used for verses
+#[derive(Eq, PartialEq, Debug)]
+struct VSpan(Span<u8>);
+
+impl VSpan {
+    fn at(x: u8) -> VSpan {
+        VSpan(Span::at(x))
+    }
+
+    fn between(x: u8, y: u8) -> VSpan {
+        VSpan(Span::between(x, y))
+    }
+}
+
+impl PartialOrd for VSpan {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match self.chapter.cmp(&other.chapter) {
-            Ordering::Equal => Some(self.verses[0].cmp(&other.verses[0])),
-            o => Some(o),
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for VSpan {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl FromStr for VSpan {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.split_once('-') {
+            Some((s1, s2)) => match (s1.trim().parse::<u8>(), s2.trim().parse::<u8>()) {
+                (Ok(v1), Ok(v2)) => Ok(VSpan::between(v1, v2)),
+                (Err(e1), Err(e2)) => Err(ParseError(format!(
+                    "Verses::from_str error: {}, {}",
+                    e1, e2
+                ))),
+                (Err(e1), _) => Err(ParseError::new(e1)),
+                (_, Err(e2)) => Err(ParseError::new(e2)),
+            },
+            None => match s.trim().parse::<u8>() {
+                Ok(v) => Ok(VSpan::at(v)),
+                Err(e) => Err(ParseError::new(e)),
+            },
         }
     }
 }
 
-impl Ord for ChapterAndVerses {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.chapter.cmp(&other.chapter) {
-            Ordering::Equal => self.verses[0].cmp(&other.verses[0]),
-            o => o,
+/// Spans used for verses
+#[derive(Eq, PartialEq, Debug)]
+struct VSpans(Spans<u8>);
+
+impl VSpans {
+    fn new() -> VSpans {
+        VSpans(Spans::new())
+    }
+}
+
+impl FromIterator<VSpan> for VSpans {
+    fn from_iter<T: IntoIterator<Item = VSpan>>(iter: T) -> Self {
+        let mut spans = Spans::new();
+
+        for VSpan(s) in iter {
+            spans.insert(s);
         }
+
+        VSpans(spans)
     }
 }
 
@@ -232,18 +259,14 @@ impl Display for Verses {
 }
 
 /// get verses from the text, and return in order
-fn get_verses(text: &str) -> Result<Vec<Verses>, ParseError> {
-    fn verses_from_str_or_none(s: &str) -> Option<Result<Verses, ParseError>> {
-        (!s.trim().is_empty()).then_some(Verses::from_str(s))
+fn get_verses(text: &str) -> Result<VSpans, ParseError> {
+    fn verses_from_str_or_none(s: &str) -> Option<Result<VSpan, ParseError>> {
+        (!s.trim().is_empty()).then_some(VSpan::from_str(s))
     }
 
     text.split(',')
         .filter_map(verses_from_str_or_none)
-        .collect::<Result<Vec<Verses>, ParseError>>()
-        .map(|mut v| {
-            v.sort();
-            v
-        })
+        .collect::<Result<VSpans, ParseError>>()
 }
 
 fn book_list() -> &'static Vec<Vec<&'static str>> {
