@@ -37,7 +37,7 @@ fn get_book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 struct Chapter(u8);
 
 impl FromStr for Chapter {
@@ -131,7 +131,7 @@ impl Display for ParseError {
 }
 
 /// Span used for verses
-#[derive(Eq, PartialEq, RefCast, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, RefCast, Debug)]
 #[repr(transparent)]
 struct VSpan(Span<u8>);
 
@@ -142,18 +142,6 @@ impl VSpan {
 
     fn between(x: u8, y: u8) -> VSpan {
         VSpan(Span::between(x, y))
-    }
-}
-
-impl PartialOrd for VSpan {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for VSpan {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.cmp(&other.0)
     }
 }
 
@@ -180,7 +168,7 @@ impl FromStr for VSpan {
 }
 
 /// Spans used for verses
-#[derive(Eq, PartialEq, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 struct VSpans(Spans<u8>);
 
 impl VSpans {
@@ -232,6 +220,31 @@ fn get_verses(text: &str) -> VSpans {
     text.split(',')
         .filter_map(vspan_from_str)
         .collect::<VSpans>()
+}
+
+#[derive(PartialEq, Eq, Debug)]
+struct ChapterVerses {
+    chapter: Chapter,
+    verses: VSpans,
+}
+
+impl PartialOrd for ChapterVerses {
+    fn partial_cmp(&self, other: &ChapterVerses) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ChapterVerses {
+    fn cmp(&self, other: &ChapterVerses) -> Ordering {
+        use Ordering::*;
+
+        let chapter_cmp = self.chapter.cmp(&other.chapter);
+        if chapter_cmp != Equal {
+            chapter_cmp
+        } else {
+            self.verses.cmp(&other.verses)
+        }
+    }
 }
 
 fn book_list() -> &'static Vec<Vec<&'static str>> {

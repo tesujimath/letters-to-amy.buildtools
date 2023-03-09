@@ -105,8 +105,8 @@ fn test_verses_from_str() {
 fn test_get_verses() {
     assert_eq!(
         get_verses("4, 9, 2, 1-7"),
-        Ok((vec![VSpan::between(1, 7), VSpan::at(9)])
+        (vec![VSpan::between(1, 7), VSpan::at(9)])
             .into_iter()
-            .collect::<VSpans>())
+            .collect::<VSpans>()
     );
 }
