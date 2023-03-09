@@ -42,7 +42,7 @@ struct ChapterContext<'a> {
     chapter: u8,
 }
 
-pub fn dump_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
+pub fn dump_chapter_and_verses_by_book(text: &str) {
     lazy_static! {
         // TODO a reference may be either:
         // 1. book chapter, which we use for later context
@@ -52,7 +52,6 @@ pub fn dump_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
             Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();
     }
 
-    let mut references = ChapterAndVersesByBook::new();
     let mut chapter_context: Option<ChapterContext> = None;
 
     for cap in REFERENCE_RE.captures_iter(text) {
@@ -97,8 +96,6 @@ pub fn dump_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
             }
         }
     }
-
-    references
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -116,33 +113,6 @@ impl ParseError {
 impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "parse error: {}", self.0)
-    }
-}
-
-/// accumulated references, by book
-#[derive(PartialEq, Eq, Debug)]
-pub struct ChapterAndVersesByBook(HashMap<&'static str, Vec<ChapterAndVerses>>);
-
-impl ChapterAndVersesByBook {
-    fn new() -> ChapterAndVersesByBook {
-        ChapterAndVersesByBook(HashMap::new())
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-#[derive(Eq, PartialEq, Debug)]
-struct ChapterAndVerses {
-    chapter: u8,
-    verses: VSpans,
-}
-
-impl ChapterAndVerses {
-    fn new(chapter: u8, verses: VSpans) -> ChapterAndVerses {
-        // TODO ?? assert!(!verses.is_empty());
-        ChapterAndVerses { chapter, verses }
     }
 }
 
@@ -236,64 +206,6 @@ impl FromIterator<VSpan> for VSpans {
 impl fmt::Display for VSpans {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.0.fmt(f)
-    }
-}
-
-#[derive(Eq, PartialEq, Debug)]
-enum Verses {
-    Single(u8),
-    Range(u8, u8),
-}
-
-impl Verses {
-    fn first(&self) -> u8 {
-        match self {
-            Verses::Single(u) => *u,
-            Verses::Range(u, _) => *u,
-        }
-    }
-}
-
-impl FromStr for Verses {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.split_once('-') {
-            Some((s1, s2)) => match (s1.trim().parse::<u8>(), s2.trim().parse::<u8>()) {
-                (Ok(v1), Ok(v2)) => Ok(Verses::Range(v1, v2)),
-                (Err(e1), Err(e2)) => Err(ParseError(format!(
-                    "Verses::from_str error: {}, {}",
-                    e1, e2
-                ))),
-                (Err(e1), _) => Err(ParseError::new(e1)),
-                (_, Err(e2)) => Err(ParseError::new(e2)),
-            },
-            None => match s.trim().parse::<u8>() {
-                Ok(v) => Ok(Verses::Single(v)),
-                Err(e) => Err(ParseError::new(e)),
-            },
-        }
-    }
-}
-
-impl PartialOrd for Verses {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.first().cmp(&other.first()))
-    }
-}
-
-impl Ord for Verses {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.first().cmp(&other.first())
-    }
-}
-
-impl Display for Verses {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            Verses::Single(v) => write!(f, "{}", v),
-            Verses::Range(v1, v2) => write!(f, "{}-{}", v1, v2),
-        }
     }
 }
 
