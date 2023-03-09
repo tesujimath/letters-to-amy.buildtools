@@ -1,4 +1,4 @@
-use super::bible::get_chapter_and_verses_by_book;
+use super::bible::dump_chapter_and_verses_by_book;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
@@ -36,7 +36,6 @@ where
                 let entry_relpath = entry_path.strip_prefix(root).unwrap();
 
                 if filter(entry_relpath) {
-                    println!("{}", entry_relpath.display());
                     let mut f = File::open(entry.path())?;
 
                     let mut content = String::new();
@@ -44,13 +43,12 @@ where
 
                     match get_header_and_body(&content) {
                         Ok((header, body)) => {
-                            let r = get_chapter_and_verses_by_book(body);
-                            if !&r.is_empty() {
-                                println!(
-                                    "references for {:?} titled '{}'",
-                                    entry_relpath, &header.title
-                                );
-                            }
+                            println!(
+                                "==================== {} - '{}'",
+                                entry_relpath.display(),
+                                &header.title
+                            );
+                            dump_chapter_and_verses_by_book(body);
                         }
                         Err(e) => println!("failed to get title and body: {}", e),
                     }

@@ -42,7 +42,7 @@ struct ChapterContext<'a> {
     chapter: u8,
 }
 
-pub fn get_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
+pub fn dump_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
     lazy_static! {
         // TODO a reference may be either:
         // 1. book chapter, which we use for later context
@@ -62,7 +62,7 @@ pub fn get_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
             .map(|m_o| m_o.map(|m| m.as_str()))
             .collect::<Vec<Option<&str>>>();
 
-        println!("{:?}", fields);
+        //println!("{:?}", fields);
 
         let book = get_book(fields[3], fields[4]);
         let chapter_str = fields[5];
@@ -80,7 +80,22 @@ pub fn get_chapter_and_verses_by_book(text: &str) -> ChapterAndVersesByBook {
             (None, None) => Ok(VSpans::new()),
         };
 
-        println!("B: {:?} {:?}", &chapter_context, &verses);
+        match (chapter_context, verses) {
+            (Some(c), Ok(v)) if v.is_empty() => {
+                println!("{} {}", c.book, c.chapter);
+            }
+            (Some(c), Ok(v)) => {
+                println!("{} {}:{}", c.book, c.chapter, v);
+            }
+            (None, Ok(v)) => {
+                if !v.is_empty() {
+                    println!("WARN: missing context for {}", v)
+                }
+            }
+            _ => {
+                println!("WARN: failed verse extraction")
+            }
+        }
     }
 
     references
@@ -188,6 +203,10 @@ impl VSpans {
     fn new() -> VSpans {
         VSpans(Spans::new())
     }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<'a> IntoIterator for &'a VSpans {
@@ -211,6 +230,12 @@ impl FromIterator<VSpan> for VSpans {
         }
 
         VSpans(spans)
+    }
+}
+
+impl fmt::Display for VSpans {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        self.0.fmt(f)
     }
 }
 

@@ -115,6 +115,10 @@ impl<T> Spans<T> {
         Spans(Vec::new())
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// determine leftmost item from i-1 and i
     fn get_leftmost_touching(&self, i: usize, item: &Span<T>) -> Option<usize>
     where
@@ -176,6 +180,21 @@ impl<'a, T> IntoIterator for &'a Spans<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
+    }
+}
+
+impl<T> fmt::Display for Spans<T>
+where
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        if !self.0.is_empty() {
+            write!(f, "{}", self.0[0].to_string())?;
+        }
+        for i in 1..self.0.len() {
+            write!(f, ", {}", self.0[i].to_string())?;
+        }
+        Ok(())
     }
 }
 
