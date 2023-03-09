@@ -20,6 +20,20 @@ fn test_span_order() {
 }
 
 #[test]
+fn test_spans_order() {
+    use Span::*;
+
+    assert!(Spans(vec![Point(1)]) == Spans(vec![Point(1)]));
+    assert!(Spans(vec![Point(1)]) < Spans(vec![Point(2)]));
+    assert!(Spans(vec![Point(1)]) < Spans(vec![Line(1, 2)]));
+    assert!(Spans(vec![Point(1)]) < Spans(vec![Point(1), Point(3)]));
+    assert!(
+        Spans(vec![Point(1), Line(3, 4), Point(6)]) == Spans(vec![Point(1), Line(3, 4), Point(6)])
+    );
+    assert!(Spans(vec![Point(1), Line(3, 4)]) < Spans(vec![Point(1), Line(3, 5)]));
+}
+
+#[test]
 fn test_spans_insert_maintains_order() {
     let mut sut = Spans::new();
 

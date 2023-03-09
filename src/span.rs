@@ -166,11 +166,37 @@ where
     T: Add<Output = T> + One + Copy + Ord,
 {
     fn partial_cmp(&self, other: &Spans<T>) -> Option<Ordering> {
-        if self.0.is_empty() || other.0.is_empty() {
-            None
-        } else {
-            Some(self.0[0].cmp(&other.0[0]))
+        Some(self.cmp(&other))
+    }
+}
+
+impl<T> Ord for Spans<T>
+where
+    T: Add<Output = T> + One + Copy + Ord,
+{
+    fn cmp(&self, other: &Spans<T>) -> Ordering {
+        use Ordering::*;
+
+        for i in 0..self.0.len().max(other.0.len()) {
+            match (self.0.get(i), other.0.get(i)) {
+                (Some(s0), Some(s1)) => {
+                    let cmp_i = s0.cmp(&s1);
+                    if cmp_i != Equal {
+                        return cmp_i;
+                    }
+                }
+                (None, Some(_)) => {
+                    return Less;
+                }
+                (Some(_), None) => {
+                    return Greater;
+                }
+                (None, None) => {
+                    return Equal;
+                }
+            }
         }
+        Equal
     }
 }
 
