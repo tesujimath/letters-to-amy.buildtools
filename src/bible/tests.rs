@@ -94,11 +94,11 @@ use super::*;
 
 #[test]
 fn test_verses_from_str() {
-    assert_eq!(Verses::from_str("7"), Ok(Verses::Single(7)));
-    assert_eq!(Verses::from_str("3-5"), Ok(Verses::Range(3, 5)));
-    assert_eq!(Verses::from_str(" 8  "), Ok(Verses::Single(8)));
-    assert_eq!(Verses::from_str(" 13   - 17 "), Ok(Verses::Range(13, 17)));
-    assert!(Verses::from_str("abc").is_err());
+    assert_eq!(VSpan::from_str("7"), Ok(VSpan::at(7)));
+    assert_eq!(VSpan::from_str("3-5"), Ok(VSpan::between(3, 5)));
+    assert_eq!(VSpan::from_str(" 8  "), Ok(VSpan::at(8)));
+    assert_eq!(VSpan::from_str(" 13   - 17 "), Ok(VSpan::between(13, 17)));
+    assert!(VSpan::from_str("abc").is_err());
 }
 
 #[test]
