@@ -1,5 +1,6 @@
 use super::span::{Span, Spans};
 use lazy_static::lazy_static;
+use ref_cast::RefCast;
 use regex::Regex;
 use std::{
     cmp::Ordering,
@@ -131,7 +132,8 @@ impl ChapterAndVerses {
 }
 
 /// Span used for verses
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, RefCast, Debug)]
+#[repr(transparent)]
 struct VSpan(Span<u8>);
 
 impl VSpan {
@@ -185,6 +187,18 @@ struct VSpans(Spans<u8>);
 impl VSpans {
     fn new() -> VSpans {
         VSpans(Spans::new())
+    }
+}
+
+impl<'a> IntoIterator for &'a VSpans {
+    type Item = &'a VSpan;
+    type IntoIter = std::iter::Map<std::slice::Iter<'a, Span<u8>>, fn(&Span<u8>) -> &VSpan>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        fn wrap(unwrapped: &Span<u8>) -> &VSpan {
+            VSpan::ref_cast(unwrapped)
+        }
+        self.0.into_iter().map(wrap)
     }
 }
 

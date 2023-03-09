@@ -104,11 +104,9 @@ fn test_verses_from_str() {
 #[test]
 fn test_get_verses() {
     assert_eq!(
-        get_verses("4, 2, 1-7"),
-        Ok(vec![
-            Verses::Range(1, 7),
-            Verses::Single(2),
-            Verses::Single(4)
-        ])
+        get_verses("4, 9, 2, 1-7"),
+        Ok((vec![VSpan::between(1, 7), VSpan::at(9)])
+            .into_iter()
+            .collect::<VSpans>())
     );
 }

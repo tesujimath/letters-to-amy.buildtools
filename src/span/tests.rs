@@ -75,3 +75,18 @@ fn test_spans_insert_coalesces_both() {
 
     assert_eq!(result, expected.iter().collect::<Vec<&Span<i32>>>());
 }
+
+#[test]
+fn test_spans_insert_coalesces_both_2() {
+    let mut sut = Spans::new();
+
+    sut.insert(Span::at(4));
+    sut.insert(Span::at(9));
+    sut.insert(Span::at(2));
+    sut.insert(Span::between(1, 7));
+
+    let expected = vec![Span::between(1, 7), Span::at(9)];
+    let result = (&sut).into_iter().collect::<Vec<&Span<i32>>>();
+
+    assert_eq!(result, expected.iter().collect::<Vec<&Span<i32>>>());
+}
