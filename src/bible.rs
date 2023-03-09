@@ -1,4 +1,5 @@
 use super::span::{Span, Spans};
+use super::util::slice_cmp;
 use lazy_static::lazy_static;
 use ref_cast::RefCast;
 use regex::Regex;
@@ -244,6 +245,21 @@ impl Ord for ChapterVerses {
         } else {
             self.verses.cmp(&other.verses)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+struct ChaptersVerses(Vec<ChapterVerses>);
+
+impl PartialOrd for ChaptersVerses {
+    fn partial_cmp(&self, other: &ChaptersVerses) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ChaptersVerses {
+    fn cmp(&self, other: &ChaptersVerses) -> Ordering {
+        slice_cmp(&self.0, &other.0)
     }
 }
 

@@ -1,6 +1,7 @@
 // TODO remove suppression for dead code warning
 #![allow(dead_code)] //, unused_variables)]
 
+use super::util::slice_cmp;
 use num::One;
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -175,28 +176,7 @@ where
     T: Add<Output = T> + One + Copy + Ord,
 {
     fn cmp(&self, other: &Spans<T>) -> Ordering {
-        use Ordering::*;
-
-        for i in 0..self.0.len().max(other.0.len()) {
-            match (self.0.get(i), other.0.get(i)) {
-                (Some(s0), Some(s1)) => {
-                    let cmp_i = s0.cmp(&s1);
-                    if cmp_i != Equal {
-                        return cmp_i;
-                    }
-                }
-                (None, Some(_)) => {
-                    return Less;
-                }
-                (Some(_), None) => {
-                    return Greater;
-                }
-                (None, None) => {
-                    return Equal;
-                }
-            }
-        }
-        Equal
+        slice_cmp(&self.0, &other.0)
     }
 }
 
