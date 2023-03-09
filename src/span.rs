@@ -110,32 +110,23 @@ where
 #[derive(Eq, PartialEq, Debug)]
 pub struct Spans<T>(Vec<Span<T>>);
 
-enum Touchingness {
-    Separate,
-    Touches(usize),
-    TouchesThisAndNext(usize),
-}
-
 impl<T> Spans<T> {
     pub fn new() -> Spans<T> {
         Spans(Vec::new())
     }
 
-    /// determine Touchingness for the item against items at i-1 and i
-    fn touchingness(&self, i: usize, item: &Span<T>) -> Touchingness
+    /// determine leftmost item from i-1 and i
+    fn get_leftmost_touching(&self, i: usize, item: &Span<T>) -> Option<usize>
     where
         T: Ord + Add<Output = T> + One + Copy,
     {
-        use Touchingness::*;
-
         let touching_left = i > 0 && self.0[i - 1].touches(item);
         let touching_this = i < self.0.len() && self.0[i].touches(item);
 
         match (touching_left, touching_this) {
-            (false, false) => Separate,
-            (false, true) => Touches(i),
-            (true, false) => Touches(i - 1),
-            (true, true) => TouchesThisAndNext(i - 1),
+            (false, false) => None,
+            (true, _) => Some(i - 1),
+            (false, true) => Some(i),
         }
     }
 
@@ -149,18 +140,16 @@ impl<T> Spans<T> {
                 assert!(item == self.0[i]);
             }
             Err(i) => {
-                use Touchingness::*;
-
-                println!("binary search for {} found {}", &item, i);
-
-                match self.touchingness(i, &item) {
-                    Separate => self.0.insert(i, item),
-                    Touches(j) => self.0[j].merge(item),
-                    TouchesThisAndNext(j) => {
-                        // merge and coalesce with next
+                match self.get_leftmost_touching(i, &item) {
+                    None => self.0.insert(i, item),
+                    Some(j) => {
                         self.0[j].merge(item);
-                        let next = self.0.remove(j + 1);
-                        self.0[j].merge(next);
+
+                        // coalesce right until no more
+                        while self.0.len() > j + 1 && self.0[j].touches(&self.0[j + 1]) {
+                            let next = self.0.remove(j + 1);
+                            self.0[j].merge(next);
+                        }
                     }
                 }
             }
