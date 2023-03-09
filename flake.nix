@@ -1,21 +1,15 @@
 {
-  description = "virtual environments";
+  description = "A flake to pin nikpkgs and load a devShell";
 
-  inputs.devshell.url = "github:numtide/devshell";
+  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixpkgs-unstable;
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
-  outputs = { self, flake-utils, devshell, nixpkgs }:
-    flake-utils.lib.eachDefaultSystem (system: {
-      devShell =
-        let pkgs = import nixpkgs {
-          inherit system;
-
-          config = { allowUnfree = true; };
-          overlays = [ devshell.overlay ];
-        };
-        in
-        pkgs.devshell.mkShell {
-          imports = [ (pkgs.devshell.importTOML ./devshell.toml) ];
-        };
-    });
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem
+      (system:
+        let pkgs = nixpkgs.legacyPackages.${system}; in
+        {
+          devShells.default = import ./shell.nix { inherit pkgs; };
+        }
+      );
 }
