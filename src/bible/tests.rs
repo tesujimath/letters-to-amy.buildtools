@@ -110,3 +110,66 @@ fn test_get_verses() {
             .collect::<VSpans>()
     );
 }
+
+#[test]
+fn test_chapters_verses_insert() {
+    let mut cv = ChaptersVerses::new();
+    cv.insert(ChapterVerses {
+        chapter: Chapter(1),
+        verses: get_verses("1-3"),
+    });
+
+    cv.insert(ChapterVerses {
+        chapter: Chapter(2),
+        verses: get_verses("4"),
+    });
+    assert_eq!(
+        cv,
+        ChaptersVerses(vec![
+            ChapterVerses {
+                chapter: Chapter(1),
+                verses: get_verses("1-3"),
+            },
+            ChapterVerses {
+                chapter: Chapter(2),
+                verses: get_verses("4"),
+            }
+        ])
+    );
+
+    cv.insert(ChapterVerses {
+        chapter: Chapter(1),
+        verses: get_verses("4"),
+    });
+    assert_eq!(
+        cv,
+        ChaptersVerses(vec![
+            ChapterVerses {
+                chapter: Chapter(1),
+                verses: get_verses("1-4"),
+            },
+            ChapterVerses {
+                chapter: Chapter(2),
+                verses: get_verses("4"),
+            }
+        ])
+    );
+
+    cv.insert(ChapterVerses {
+        chapter: Chapter(2),
+        verses: get_verses("6"),
+    });
+    assert_eq!(
+        cv,
+        ChaptersVerses(vec![
+            ChapterVerses {
+                chapter: Chapter(1),
+                verses: get_verses("1-4"),
+            },
+            ChapterVerses {
+                chapter: Chapter(2),
+                verses: get_verses("4, 6"),
+            }
+        ])
+    );
+}

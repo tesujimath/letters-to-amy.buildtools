@@ -104,3 +104,32 @@ fn test_spans_insert_coalesces_both_2() {
 
     assert_eq!(result, expected.iter().collect::<Vec<&Span<i32>>>());
 }
+
+#[test]
+fn test_spans_from_iter() {
+    let result = Spans::from_iter(vec![Span::at(9), Span::between(1, 7)]);
+
+    let expected = vec![Span::between(1, 7), Span::at(9)];
+    assert_eq!(
+        result.into_iter().collect::<Vec<&Span<i32>>>(),
+        expected.iter().collect::<Vec<&Span<i32>>>()
+    );
+}
+
+#[test]
+fn test_spans_merge() {
+    let mut s0 = Spans::from_iter(vec![Span::at(9), Span::between(1, 7)]);
+    let s1 = Spans::from_iter(vec![
+        Span::at(1),
+        Span::at(2),
+        Span::at(8),
+        Span::between(11, 12),
+    ]);
+
+    s0.merge(s1);
+    let expected = vec![Span::between(1, 9), Span::between(11, 12)];
+    assert_eq!(
+        s0.into_iter().collect::<Vec<&Span<i32>>>(),
+        expected.iter().collect::<Vec<&Span<i32>>>()
+    );
+}

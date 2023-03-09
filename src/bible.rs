@@ -180,6 +180,10 @@ impl VSpans {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    fn merge(&mut self, other: VSpans) {
+        self.0.merge(other.0);
+    }
 }
 
 impl<'a> IntoIterator for &'a VSpans {
@@ -196,13 +200,11 @@ impl<'a> IntoIterator for &'a VSpans {
 
 impl FromIterator<VSpan> for VSpans {
     fn from_iter<T: IntoIterator<Item = VSpan>>(iter: T) -> Self {
-        let mut spans = Spans::new();
-
-        for VSpan(s) in iter {
-            spans.insert(s);
+        fn unwrap(wrapped: VSpan) -> Span<u8> {
+            wrapped.0
         }
 
-        VSpans(spans)
+        VSpans(Spans::from_iter(iter.into_iter().map(unwrap)))
     }
 }
 
@@ -250,6 +252,19 @@ impl Ord for ChapterVerses {
 
 #[derive(PartialEq, Eq, Debug)]
 struct ChaptersVerses(Vec<ChapterVerses>);
+
+impl ChaptersVerses {
+    fn new() -> ChaptersVerses {
+        ChaptersVerses(Vec::new())
+    }
+
+    fn insert(&mut self, item: ChapterVerses) {
+        match self.0.binary_search_by_key(&item.chapter, |cv| cv.chapter) {
+            Ok(i) => self.0[i].verses.merge(item.verses),
+            Err(i) => self.0.insert(i, item),
+        }
+    }
+}
 
 impl PartialOrd for ChaptersVerses {
     fn partial_cmp(&self, other: &ChaptersVerses) -> Option<Ordering> {

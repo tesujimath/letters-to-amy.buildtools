@@ -160,6 +160,15 @@ impl<T> Spans<T> {
             }
         }
     }
+
+    pub fn merge(&mut self, other: Spans<T>)
+    where
+        T: Ord + Add<Output = T> + One + Copy + fmt::Display,
+    {
+        for item in other.0 {
+            self.insert(item);
+        }
+    }
 }
 
 impl<T> PartialOrd for Spans<T>
@@ -186,6 +195,21 @@ impl<'a, T> IntoIterator for &'a Spans<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
+    }
+}
+
+impl<T> FromIterator<Span<T>> for Spans<T>
+where
+    T: Ord + Add<Output = T> + One + Copy + fmt::Display,
+{
+    fn from_iter<I: IntoIterator<Item = Span<T>>>(iter: I) -> Self {
+        let mut spans = Spans::new();
+
+        for s in iter {
+            spans.insert(s);
+        }
+
+        spans
     }
 }
 
