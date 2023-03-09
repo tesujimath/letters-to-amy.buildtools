@@ -6,6 +6,7 @@ use std::{
     cmp::Ordering,
     collections::HashMap,
     fmt::{self, Display, Formatter},
+    num::ParseIntError,
     str::FromStr,
 };
 
@@ -37,9 +38,26 @@ fn get_book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
 }
 
 #[derive(Clone, Copy, Debug)]
+struct Chapter(u8);
+
+impl FromStr for Chapter {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        u8::from_str(s).map(Chapter)
+    }
+}
+
+impl Display for Chapter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 struct ChapterContext<'a> {
     book: &'a str,
-    chapter: u8,
+    chapter: Chapter,
 }
 
 pub fn dump_chapter_and_verses_by_book(text: &str) {
@@ -68,7 +86,7 @@ pub fn dump_chapter_and_verses_by_book(text: &str) {
         if let (Some(book), Some(chapter_str)) = (book, chapter_str) {
             chapter_context = Some(ChapterContext {
                 book,
-                chapter: chapter_str.parse::<u8>().unwrap(),
+                chapter: chapter_str.parse::<Chapter>().unwrap(),
             })
         }
 
