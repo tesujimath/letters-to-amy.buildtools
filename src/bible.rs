@@ -72,27 +72,23 @@ pub fn dump_chapter_and_verses_by_book(text: &str) {
             })
         }
 
-        let verses = match (fields[1], fields[7]) {
+        let vspans = match (fields[1], fields[7]) {
             (Some(_), Some(_)) => panic!("not possible to have both verse alternatives"),
             (Some(v), None) => get_verses(v),
             (None, Some(v)) => get_verses(v),
-            (None, None) => Ok(VSpans::new()),
+            (None, None) => VSpans::new(),
         };
 
-        match (chapter_context, verses) {
-            (Some(c), Ok(v)) if v.is_empty() => {
-                println!("{} {}", c.book, c.chapter);
-            }
-            (Some(c), Ok(v)) => {
-                println!("{} {}:{}", c.book, c.chapter, v);
-            }
-            (None, Ok(v)) => {
-                if !v.is_empty() {
-                    println!("WARN: missing context for {}", v)
+        match chapter_context {
+            Some(c) => {
+                if vspans.is_empty() {
+                    println!("{} {}", c.book, c.chapter);
+                } else {
+                    println!("{} {}:{}", c.book, c.chapter, vspans);
                 }
             }
-            _ => {
-                println!("WARN: failed verse extraction")
+            None => {
+                println!("WARN: missing context for {}", vspans)
             }
         }
     }
@@ -210,14 +206,14 @@ impl fmt::Display for VSpans {
 }
 
 /// get verses from the text, and return in order
-fn get_verses(text: &str) -> Result<VSpans, ParseError> {
-    fn verses_from_str_or_none(s: &str) -> Option<Result<VSpan, ParseError>> {
-        (!s.trim().is_empty()).then_some(VSpan::from_str(s))
+fn get_verses(text: &str) -> VSpans {
+    fn vspan_from_str(s: &str) -> Option<VSpan> {
+        VSpan::from_str(s).ok()
     }
 
     text.split(',')
-        .filter_map(verses_from_str_or_none)
-        .collect::<Result<VSpans, ParseError>>()
+        .filter_map(vspan_from_str)
+        .collect::<VSpans>()
 }
 
 fn book_list() -> &'static Vec<Vec<&'static str>> {
