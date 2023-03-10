@@ -2,6 +2,7 @@
 #![allow(dead_code)] //, unused_variables)]
 
 use super::util::slice_cmp;
+use itertools::Itertools;
 use num::One;
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -218,13 +219,15 @@ where
     T: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        if !self.0.is_empty() {
-            write!(f, "{}", self.0[0].to_string())?;
-        }
-        for i in 1..self.0.len() {
-            write!(f, ", {}", self.0[i].to_string())?;
-        }
-        Ok(())
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|s| s.to_string())
+                .intersperse(",".to_string())
+                .collect::<String>()
+        )
     }
 }
 

@@ -1,5 +1,6 @@
 use super::span::{Span, Spans};
 use super::util::slice_cmp;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use ref_cast::RefCast;
 use regex::Regex;
@@ -13,7 +14,7 @@ use std::{
 
 fn get_book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     lazy_static! {
-        static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_list()
+        static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_aliases()
             .iter()
             .flat_map(|aliases| {
                 aliases
@@ -71,6 +72,7 @@ pub fn dump_chapter_and_verses_by_book(text: &str) {
             Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();
     }
 
+    let mut references = BookChaptersVerses::new();
     let mut chapter_context: Option<ChapterContext> = None;
 
     for cap in REFERENCE_RE.captures_iter(text) {
@@ -99,16 +101,18 @@ pub fn dump_chapter_and_verses_by_book(text: &str) {
         };
 
         match chapter_context {
-            Some(c) => {
-                if vspans.is_empty() {
-                    println!("{} {}", c.book, c.chapter);
-                } else {
-                    println!("{} {}:{}", c.book, c.chapter, vspans);
-                }
+            Some(ctx) => {
+                references.insert(ctx.book, ChapterVerses::new(ctx.chapter, vspans));
             }
             None => {
                 println!("WARN: missing context for {}", vspans)
             }
+        }
+    }
+
+    for book in books() {
+        if let Some(cvs) = references.get(book) {
+            println!("{} {}", book, cvs);
         }
     }
 }
@@ -231,6 +235,12 @@ struct ChapterVerses {
     verses: VSpans,
 }
 
+impl ChapterVerses {
+    fn new(chapter: Chapter, verses: VSpans) -> ChapterVerses {
+        ChapterVerses { chapter, verses }
+    }
+}
+
 impl PartialOrd for ChapterVerses {
     fn partial_cmp(&self, other: &ChapterVerses) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -250,12 +260,22 @@ impl Ord for ChapterVerses {
     }
 }
 
+impl Display for ChapterVerses {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        if self.verses.is_empty() {
+            write!(f, "{}", self.chapter)
+        } else {
+            write!(f, "{}:{}", self.chapter, self.verses)
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug)]
 struct ChaptersVerses(Vec<ChapterVerses>);
 
 impl ChaptersVerses {
-    fn new() -> ChaptersVerses {
-        ChaptersVerses(Vec::new())
+    fn new(item: ChapterVerses) -> ChaptersVerses {
+        ChaptersVerses(vec![item])
     }
 
     fn insert(&mut self, item: ChapterVerses) {
@@ -278,7 +298,51 @@ impl Ord for ChaptersVerses {
     }
 }
 
-fn book_list() -> &'static Vec<Vec<&'static str>> {
+impl<'a> IntoIterator for &'a ChaptersVerses {
+    type Item = &'a ChapterVerses;
+    type IntoIter = std::slice::Iter<'a, ChapterVerses>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
+}
+
+impl Display for ChaptersVerses {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|cv| cv.to_string())
+                .intersperse("; ".to_string())
+                .collect::<String>()
+        )
+    }
+}
+
+struct BookChaptersVerses(HashMap<&'static str, ChaptersVerses>);
+
+impl BookChaptersVerses {
+    fn new() -> BookChaptersVerses {
+        BookChaptersVerses(HashMap::new())
+    }
+
+    fn get(&self, book: &'static str) -> Option<&ChaptersVerses> {
+        self.0.get(book)
+    }
+
+    fn insert(&mut self, book: &'static str, cv: ChapterVerses) {
+        match self.0.get_mut(book) {
+            Some(entry) => entry.insert(cv),
+            None => {
+                self.0.insert(book, ChaptersVerses::new(cv));
+            }
+        }
+    }
+}
+
+fn book_aliases() -> &'static Vec<Vec<&'static str>> {
     lazy_static! {
         static ref BOOK_LIST: Vec<Vec<&'static str>> = vec![
             vec!["Genesis", "Gen"],
@@ -351,6 +415,10 @@ fn book_list() -> &'static Vec<Vec<&'static str>> {
     }
 
     &BOOK_LIST
+}
+
+fn books() -> impl Iterator<Item = &'static str> {
+    book_aliases().iter().map(|aliases| aliases[0])
 }
 
 mod tests;
