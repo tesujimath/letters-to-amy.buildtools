@@ -62,7 +62,7 @@ struct ChapterContext<'a> {
     chapter: Chapter,
 }
 
-pub fn dump_chapter_and_verses_by_book(text: &str) {
+pub fn get_chapter_and_verses_by_book(text: &str) -> BookChaptersVerses {
     lazy_static! {
         // TODO a reference may be either:
         // 1. book chapter, which we use for later context
@@ -110,11 +110,7 @@ pub fn dump_chapter_and_verses_by_book(text: &str) {
         }
     }
 
-    for book in books() {
-        if let Some(cvs) = references.get(book) {
-            println!("{} {}", book, cvs);
-        }
-    }
+    references
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -230,7 +226,7 @@ fn get_verses(text: &str) -> VSpans {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-struct ChapterVerses {
+pub struct ChapterVerses {
     chapter: Chapter,
     verses: VSpans,
 }
@@ -271,7 +267,7 @@ impl Display for ChapterVerses {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-struct ChaptersVerses(Vec<ChapterVerses>);
+pub struct ChaptersVerses(Vec<ChapterVerses>);
 
 impl ChaptersVerses {
     fn new(item: ChapterVerses) -> ChaptersVerses {
@@ -321,14 +317,14 @@ impl Display for ChaptersVerses {
     }
 }
 
-struct BookChaptersVerses(HashMap<&'static str, ChaptersVerses>);
+pub struct BookChaptersVerses(HashMap<&'static str, ChaptersVerses>);
 
 impl BookChaptersVerses {
     fn new() -> BookChaptersVerses {
         BookChaptersVerses(HashMap::new())
     }
 
-    fn get(&self, book: &'static str) -> Option<&ChaptersVerses> {
+    pub fn get(&self, book: &'static str) -> Option<&ChaptersVerses> {
         self.0.get(book)
     }
 
@@ -417,7 +413,7 @@ fn book_aliases() -> &'static Vec<Vec<&'static str>> {
     &BOOK_LIST
 }
 
-fn books() -> impl Iterator<Item = &'static str> {
+pub fn books() -> impl Iterator<Item = &'static str> {
     book_aliases().iter().map(|aliases| aliases[0])
 }
 

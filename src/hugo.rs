@@ -1,4 +1,4 @@
-use super::bible::dump_chapter_and_verses_by_book;
+use super::bible;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
@@ -12,11 +12,11 @@ use std::{io, path::Path};
 
 pub fn dump_posts() -> io::Result<()> {
     let path = PathBuf::from("../content");
-    walk_markdown_files(&path, &path, |p| p.starts_with("post/"))
+    get_all_post_bible_references(&path, &path, |p| p.starts_with("post/"))
 }
 
 // TODO pass in callback
-fn walk_markdown_files<F>(root: &Path, dir: &Path, filter: F) -> io::Result<()>
+fn get_all_post_bible_references<F>(root: &Path, dir: &Path, filter: F) -> io::Result<()>
 where
     F: Fn(&Path) -> bool + Copy,
 {
@@ -30,7 +30,7 @@ where
         if let Ok(entry) = entry_r {
             let file_type = entry.file_type()?;
             if file_type.is_dir() {
-                walk_markdown_files(root, &entry.path(), filter)?;
+                get_all_post_bible_references(root, &entry.path(), filter)?;
             } else if file_type.is_file() && is_markdown_file(&entry) {
                 let entry_path = entry.path();
                 let entry_relpath = entry_path.strip_prefix(root).unwrap();
@@ -48,7 +48,14 @@ where
                                 entry_relpath.display(),
                                 &header.title
                             );
-                            dump_chapter_and_verses_by_book(body);
+
+                            let references = bible::get_chapter_and_verses_by_book(body);
+
+                            for book in bible::books() {
+                                if let Some(cvs) = references.get(book) {
+                                    println!("{} {}", book, cvs);
+                                }
+                            }
                         }
                         Err(e) => println!("failed to get title and body: {}", e),
                     }
