@@ -338,6 +338,8 @@ impl BookChaptersVerses {
     }
 }
 
+// TODO implement IntoIterator for BookChaptersVerses, maybe to take ownership
+
 fn book_aliases() -> &'static Vec<Vec<&'static str>> {
     lazy_static! {
         static ref BOOK_LIST: Vec<Vec<&'static str>> = vec![

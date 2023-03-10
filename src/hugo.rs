@@ -1,7 +1,7 @@
 use super::bible;
+use super::posts::Header;
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::Deserialize;
 use std::convert::AsRef;
 use std::fmt;
 use std::fs::DirEntry;
@@ -65,11 +65,6 @@ where
     }
 
     Ok(())
-}
-
-#[derive(Deserialize, PartialEq, Eq, Debug)]
-struct Header {
-    title: String,
 }
 
 #[derive(PartialEq, Eq, Debug)]
