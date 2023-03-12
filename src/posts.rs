@@ -4,7 +4,7 @@
 use super::bible::{BookChaptersVerses, ChaptersVerses};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::{io, path::Path, string};
+use std::path::Path;
 
 #[derive(Deserialize, PartialEq, Eq, Debug)]
 pub struct Header {
@@ -53,9 +53,9 @@ impl<'a> AllPostsReferences<'a> {
         &mut self,
         entry_relpath: &Path,
         header: Header,
-        refs: BookChaptersVerses,
+        _refs: BookChaptersVerses,
     ) {
-        let post = self.add_post(entry_relpath, header);
+        let _post = self.add_post(entry_relpath, header);
 
         //for (k, v) in refs.into_iter() {}
     }

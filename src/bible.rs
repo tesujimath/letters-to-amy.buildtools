@@ -1,11 +1,9 @@
-use super::span::{Span, Spans};
 use super::util::slice_cmp;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use ref_cast::RefCast;
 use regex::Regex;
 use std::{
-    cmp::Ordering,
+    cmp::{self, Ordering},
     collections::HashMap,
     fmt::{self, Display, Formatter},
     num::ParseIntError,
@@ -39,14 +37,17 @@ fn get_book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     }
 }
 
+/// integer used for chapter index
+type CInt = u8;
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-struct Chapter(u8);
+struct Chapter(CInt);
 
 impl FromStr for Chapter {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        u8::from_str(s).map(Chapter)
+        CInt::from_str(s).map(Chapter)
     }
 }
 
@@ -114,7 +115,7 @@ pub fn get_chapter_and_verses_by_book(text: &str) -> BookChaptersVerses {
 }
 
 #[derive(Eq, PartialEq, Debug)]
-struct ParseError(String);
+pub struct ParseError(String);
 
 impl ParseError {
     fn new<T>(message: T) -> ParseError
@@ -131,18 +132,91 @@ impl Display for ParseError {
     }
 }
 
+/// integer used for verse index
+type VInt = u8;
+
 /// Span used for verses
-#[derive(PartialEq, Eq, PartialOrd, Ord, RefCast, Debug)]
-#[repr(transparent)]
-struct VSpan(Span<u8>);
+#[derive(PartialEq, Eq, Debug)]
+pub enum VSpan {
+    Point(VInt),
+    Line(VInt, VInt),
+}
 
 impl VSpan {
-    fn at(x: u8) -> VSpan {
-        VSpan(Span::at(x))
+    pub fn at(x: VInt) -> VSpan {
+        VSpan::Point(x)
     }
 
-    fn between(x: u8, y: u8) -> VSpan {
-        VSpan(Span::between(x, y))
+    pub fn between(from: VInt, to: VInt) -> VSpan {
+        assert!(from <= to);
+
+        VSpan::Line(from, to)
+    }
+
+    fn lower(&self) -> VInt {
+        use VSpan::*;
+        match self {
+            Point(x) => *x,
+            Line(x1, _) => *x1,
+        }
+    }
+
+    fn upper(&self) -> VInt {
+        use VSpan::*;
+        match self {
+            Point(x) => *x,
+            Line(_, x2) => *x2,
+        }
+    }
+
+    /// merge in other, which must be touching
+    fn merge(&mut self, other: VSpan) {
+        assert!(self.touches(&other));
+
+        use VSpan::*;
+        match (&self, &other) {
+            (Point(x), Point(y)) if x == y => (),
+            _ => {
+                *self = Line(
+                    cmp::min(self.lower(), other.lower()),
+                    cmp::max(self.upper(), other.upper()),
+                )
+            }
+        }
+    }
+
+    /// whether other touches this, where a distance of 1 counts as touching
+    fn touches(&self, other: &VSpan) -> bool {
+        !(self.upper() + 1 < other.lower() || self.lower() > other.upper() + 1)
+    }
+}
+
+impl PartialOrd for VSpan {
+    fn partial_cmp(&self, other: &VSpan) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for VSpan {
+    fn cmp(&self, other: &VSpan) -> Ordering {
+        use Ordering::*;
+
+        let lower_cmp = self.lower().cmp(&other.lower());
+        if lower_cmp == Equal {
+            self.upper().cmp(&other.upper())
+        } else {
+            lower_cmp
+        }
+    }
+}
+
+impl fmt::Display for VSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        use VSpan::*;
+        match self {
+            Point(x) => write!(f, "{}", x),
+            Line(x1, x2) => write!(f, "{}-{}", x1, x2),
+        }
     }
 }
 
@@ -151,7 +225,7 @@ impl FromStr for VSpan {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split_once('-') {
-            Some((s1, s2)) => match (s1.trim().parse::<u8>(), s2.trim().parse::<u8>()) {
+            Some((s1, s2)) => match (s1.trim().parse::<VInt>(), s2.trim().parse::<VInt>()) {
                 (Ok(v1), Ok(v2)) => Ok(VSpan::between(v1, v2)),
                 (Err(e1), Err(e2)) => Err(ParseError(format!(
                     "Verses::from_str error: {}, {}",
@@ -160,7 +234,7 @@ impl FromStr for VSpan {
                 (Err(e1), _) => Err(ParseError::new(e1)),
                 (_, Err(e2)) => Err(ParseError::new(e2)),
             },
-            None => match s.trim().parse::<u8>() {
+            None => match s.trim().parse::<VInt>() {
                 Ok(v) => Ok(VSpan::at(v)),
                 Err(e) => Err(ParseError::new(e)),
             },
@@ -169,48 +243,104 @@ impl FromStr for VSpan {
 }
 
 /// Spans used for verses
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
-struct VSpans(Spans<u8>);
+#[derive(PartialEq, Eq, Debug)]
+pub struct VSpans(Vec<VSpan>);
 
 impl VSpans {
-    fn new() -> VSpans {
-        VSpans(Spans::new())
+    pub fn new() -> VSpans {
+        VSpans(Vec::new())
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    fn merge(&mut self, other: VSpans) {
-        self.0.merge(other.0);
+    /// determine leftmost item from i-1 and i
+    fn get_leftmost_touching(&self, i: usize, item: &VSpan) -> Option<usize> {
+        let touching_left = i > 0 && self.0[i - 1].touches(item);
+        let touching_this = i < self.0.len() && self.0[i].touches(item);
+
+        match (touching_left, touching_this) {
+            (false, false) => None,
+            (true, _) => Some(i - 1),
+            (false, true) => Some(i),
+        }
+    }
+
+    pub fn insert(&mut self, item: VSpan) {
+        match self.0.binary_search(&item) {
+            Ok(i) => {
+                // repeated insert, ignore
+                assert!(item == self.0[i]);
+            }
+            Err(i) => {
+                match self.get_leftmost_touching(i, &item) {
+                    None => self.0.insert(i, item),
+                    Some(j) => {
+                        self.0[j].merge(item);
+
+                        // coalesce right until no more
+                        while self.0.len() > j + 1 && self.0[j].touches(&self.0[j + 1]) {
+                            let next = self.0.remove(j + 1);
+                            self.0[j].merge(next);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn merge(&mut self, other: VSpans) {
+        for item in other.0 {
+            self.insert(item);
+        }
+    }
+}
+
+impl PartialOrd for VSpans {
+    fn partial_cmp(&self, other: &VSpans) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl Ord for VSpans {
+    fn cmp(&self, other: &VSpans) -> Ordering {
+        slice_cmp(&self.0, &other.0)
     }
 }
 
 impl<'a> IntoIterator for &'a VSpans {
     type Item = &'a VSpan;
-    type IntoIter = std::iter::Map<std::slice::Iter<'a, Span<u8>>, fn(&Span<u8>) -> &VSpan>;
+    type IntoIter = std::slice::Iter<'a, VSpan>;
 
     fn into_iter(self) -> Self::IntoIter {
-        fn wrap(unwrapped: &Span<u8>) -> &VSpan {
-            VSpan::ref_cast(unwrapped)
-        }
-        self.0.into_iter().map(wrap)
+        self.0.iter()
     }
 }
 
 impl FromIterator<VSpan> for VSpans {
-    fn from_iter<T: IntoIterator<Item = VSpan>>(iter: T) -> Self {
-        fn unwrap(wrapped: VSpan) -> Span<u8> {
-            wrapped.0
+    fn from_iter<I: IntoIterator<Item = VSpan>>(iter: I) -> Self {
+        let mut spans = VSpans::new();
+
+        for s in iter {
+            spans.insert(s);
         }
 
-        VSpans(Spans::from_iter(iter.into_iter().map(unwrap)))
+        spans
     }
 }
 
 impl fmt::Display for VSpans {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        self.0.fmt(f)
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|s| s.to_string())
+                .intersperse(",".to_string())
+                .collect::<String>()
+        )
     }
 }
 

@@ -2,96 +2,6 @@
 
 use super::*;
 
-// TODO work out what this should be now
-// #[test]
-// fn test_references_insert() {
-//     fn insert(r: &mut ChapterAndVersesByBook, book: &'static str, verses: &str) {
-//         r.insert(book, ChapterAndVerses::from_str(verses).unwrap());
-//     }
-
-//     const B1: &str = "Genesis";
-//     const B2: &str = "Exodus";
-
-//     let mut r = ChapterAndVersesByBook::new();
-
-//     insert(&mut r, B1, "12:7");
-//     insert(&mut r, B1, "12:6");
-//     insert(&mut r, B2, "10:3-9");
-//     insert(&mut r, B2, "10:4");
-
-//     assert_eq!(
-//         r,
-//         ChapterAndVersesByBook(HashMap::from([
-//             (
-//                 B1,
-//                 vec![
-//                     ChapterAndVerses {
-//                         chapter: 12,
-//                         verses: vec![Verses::Single(6)]
-//                     },
-//                     ChapterAndVerses {
-//                         chapter: 12,
-//                         verses: vec![Verses::Single(7)]
-//                     },
-//                 ]
-//             ),
-//             (
-//                 B2,
-//                 vec![
-//                     ChapterAndVerses {
-//                         chapter: 10,
-//                         verses: vec![Verses::Range(3, 9)]
-//                     },
-//                     ChapterAndVerses {
-//                         chapter: 10,
-//                         verses: vec![Verses::Single(4)]
-//                     },
-//                 ]
-//             ),
-//         ]))
-//     );
-// }
-
-// #[test]
-// fn test_chapter_and_verses_from_str() {
-//     assert_eq!(
-//         ChapterAndVerses::from_str("4:8"),
-//         Ok(ChapterAndVerses {
-//             chapter: 4,
-//             verses: vec![Verses::Single(8)]
-//         })
-//     );
-
-//     assert_eq!(
-//         ChapterAndVerses::from_str("4:8,"),
-//         Ok(ChapterAndVerses {
-//             chapter: 4,
-//             verses: vec![Verses::Single(8)]
-//         })
-//     );
-
-//     assert_eq!(
-//         ChapterAndVerses::from_str("17:8-9"),
-//         Ok(ChapterAndVerses {
-//             chapter: 17,
-//             verses: vec![Verses::Range(8, 9)]
-//         })
-//     );
-
-//     assert_eq!(
-//         ChapterAndVerses::from_str("11:1, 4, 8-11, 15"),
-//         Ok(ChapterAndVerses {
-//             chapter: 11,
-//             verses: vec![
-//                 Verses::Single(1),
-//                 Verses::Single(4),
-//                 Verses::Range(8, 11),
-//                 Verses::Single(15)
-//             ]
-//         })
-//     );
-// }
-
 #[test]
 fn test_verses_from_str() {
     assert_eq!(VSpan::from_str("7"), Ok(VSpan::at(7)));
@@ -101,20 +11,143 @@ fn test_verses_from_str() {
     assert!(VSpan::from_str("abc").is_err());
 }
 
+// helper for VSpan creation for tests
+fn vspan(s: &str) -> VSpan {
+    VSpan::from_str(s).unwrap()
+}
+
+#[test]
+fn test_vspans_from_iter() {
+    let result = VSpans::from_iter(vec![vspan("9"), vspan("1-7")]);
+    let expected = VSpans(vec![vspan("1-7"), vspan("9")]);
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_vspan_order() {
+    use VSpan::*;
+
+    assert!(Point(1) == Point(1));
+    assert!(Point(1) < Point(2));
+    assert!(Point(1) < Line(2, 3));
+    assert!(Point(1) < Line(1, 3));
+    assert!(Line(1, 2) < Line(2, 3));
+    assert!(Line(1, 2) < Line(1, 3));
+    assert!(Line(1, 2) < Line(1, 3));
+    assert!(Line(1, 2) == Line(1, 2));
+    assert!(Line(1, 2) < Point(4));
+    assert!(Line(1, 3) < Point(2));
+    assert!(Point(2) < Line(3, 5));
+}
+
+#[test]
+fn test_vspans_order() {
+    use VSpan::*;
+
+    assert!(VSpans(vec![Point(1)]) == VSpans(vec![Point(1)]));
+    assert!(VSpans(vec![Point(1)]) < VSpans(vec![Point(2)]));
+    assert!(VSpans(vec![Point(1)]) < VSpans(vec![Line(1, 2)]));
+    assert!(VSpans(vec![Point(1)]) < VSpans(vec![Point(1), Point(3)]));
+    assert!(
+        VSpans(vec![Point(1), Line(3, 4), Point(6)])
+            == VSpans(vec![Point(1), Line(3, 4), Point(6)])
+    );
+    assert!(VSpans(vec![Point(1), Line(3, 4)]) < VSpans(vec![Point(1), Line(3, 5)]));
+}
+
+#[test]
+fn test_vspans_insert_maintains_order() {
+    let mut result = VSpans::new();
+
+    result.insert(vspan("4"));
+    result.insert(vspan("1-2"));
+    result.insert(vspan("4"));
+    result.insert(vspan("1-2"));
+
+    let expected = VSpans(vec![vspan("1-2"), vspan("4")]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_vspans_insert_coalesces_left() {
+    let mut result = VSpans::new();
+
+    result.insert(vspan("2"));
+    result.insert(vspan("3"));
+
+    let expected = VSpans(vec![vspan("2-3")]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_vspans_insert_coalesces_right() {
+    let mut result = VSpans::new();
+
+    result.insert(vspan("3"));
+    result.insert(vspan("1-2"));
+
+    let expected = VSpans(vec![vspan("1-3")]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_vspans_insert_coalesces_both() {
+    let mut result = VSpans::new();
+
+    result.insert(VSpan::at(1));
+    result.insert(VSpan::at(20));
+    result.insert(VSpan::at(13));
+    result.insert(VSpan::at(10));
+    result.insert(VSpan::between(11, 12));
+
+    let expected = VSpans(vec![vspan("1"), vspan("10-13"), vspan("20")]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_vspans_insert_coalesces_both_2() {
+    let mut result = VSpans::new();
+
+    result.insert(vspan("4"));
+    result.insert(vspan("9"));
+    result.insert(vspan("2"));
+    result.insert(vspan("1-7"));
+
+    let expected = VSpans(vec![vspan("1-7"), vspan("9")]);
+
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn test_vspans_merge() {
+    let mut s0 = VSpans::from_iter(vec![vspan("9"), vspan("1-7")]);
+    let s1 = VSpans::from_iter(vec![
+        VSpan::at(1),
+        VSpan::at(2),
+        VSpan::at(8),
+        VSpan::between(11, 12),
+    ]);
+
+    s0.merge(s1);
+    let expected = VSpans(vec![vspan("1-9"), vspan("11-12")]);
+    assert_eq!(s0, expected);
+}
+
 #[test]
 fn test_get_verses() {
     assert_eq!(
         get_verses("4, 9, 2, 1-7"),
-        (vec![VSpan::between(1, 7), VSpan::at(9)])
-            .into_iter()
-            .collect::<VSpans>()
+        VSpans(vec![vspan("1-7"), vspan("9")])
     );
 }
 
 #[test]
 fn test_chapters_verses_insert() {
-    let mut cv = ChaptersVerses::new();
-    cv.insert(ChapterVerses {
+    let mut cv = ChaptersVerses::new(ChapterVerses {
         chapter: Chapter(1),
         verses: get_verses("1-3"),
     });

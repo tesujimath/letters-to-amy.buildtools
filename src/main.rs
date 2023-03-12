@@ -21,5 +21,4 @@ fn main() -> ExitCode {
 mod bible;
 mod hugo;
 mod posts;
-mod span;
 mod util;
