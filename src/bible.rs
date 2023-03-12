@@ -63,7 +63,7 @@ struct ChapterContext<'a> {
     chapter: Chapter,
 }
 
-pub fn get_chapter_and_verses_by_book(text: &str) -> BookChaptersVerses {
+pub fn get_references(text: &str) -> References {
     lazy_static! {
         // TODO a reference may be either:
         // 1. book chapter, which we use for later context
@@ -73,7 +73,7 @@ pub fn get_chapter_and_verses_by_book(text: &str) -> BookChaptersVerses {
             Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();
     }
 
-    let mut references = BookChaptersVerses::new();
+    let mut references = References::new();
     let mut chapter_context: Option<ChapterContext> = None;
 
     for cap in REFERENCE_RE.captures_iter(text) {
@@ -143,11 +143,11 @@ pub enum VSpan {
 }
 
 impl VSpan {
-    pub fn at(x: VInt) -> VSpan {
+    fn at(x: VInt) -> VSpan {
         VSpan::Point(x)
     }
 
-    pub fn between(from: VInt, to: VInt) -> VSpan {
+    fn between(from: VInt, to: VInt) -> VSpan {
         assert!(from <= to);
 
         VSpan::Line(from, to)
@@ -247,11 +247,11 @@ impl FromStr for VSpan {
 pub struct VSpans(Vec<VSpan>);
 
 impl VSpans {
-    pub fn new() -> VSpans {
+    fn new() -> VSpans {
         VSpans(Vec::new())
     }
 
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
@@ -267,7 +267,7 @@ impl VSpans {
         }
     }
 
-    pub fn insert(&mut self, item: VSpan) {
+    fn insert(&mut self, item: VSpan) {
         match self.0.binary_search(&item) {
             Ok(i) => {
                 // repeated insert, ignore
@@ -290,7 +290,7 @@ impl VSpans {
         }
     }
 
-    pub fn merge(&mut self, other: VSpans) {
+    fn merge(&mut self, other: VSpans) {
         for item in other.0 {
             self.insert(item);
         }
@@ -447,11 +447,11 @@ impl Display for ChaptersVerses {
     }
 }
 
-pub struct BookChaptersVerses(HashMap<&'static str, ChaptersVerses>);
+pub struct References(HashMap<&'static str, ChaptersVerses>);
 
-impl BookChaptersVerses {
-    fn new() -> BookChaptersVerses {
-        BookChaptersVerses(HashMap::new())
+impl References {
+    fn new() -> References {
+        References(HashMap::new())
     }
 
     pub fn get(&self, book: &'static str) -> Option<&ChaptersVerses> {

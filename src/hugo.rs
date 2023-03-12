@@ -49,7 +49,7 @@ where
                                 &header.title
                             );
 
-                            let references = bible::get_chapter_and_verses_by_book(body);
+                            let references = bible::get_references(body);
 
                             for book in bible::books() {
                                 if let Some(cvs) = references.get(book) {

@@ -1,7 +1,7 @@
 // TODO remove suppression for dead code warning
 #![allow(dead_code)] //, unused_variables)]
 
-use super::bible::{BookChaptersVerses, ChaptersVerses};
+use super::bible::{ChaptersVerses, References};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -49,12 +49,7 @@ impl<'a> AllPostsReferences<'a> {
         self.all_posts.last().unwrap()
     }
 
-    pub fn add_post_refs(
-        &mut self,
-        entry_relpath: &Path,
-        header: Header,
-        _refs: BookChaptersVerses,
-    ) {
+    pub fn add_post_refs(&mut self, entry_relpath: &Path, header: Header, _refs: References) {
         let _post = self.add_post(entry_relpath, header);
 
         //for (k, v) in refs.into_iter() {}
