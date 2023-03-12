@@ -335,10 +335,7 @@ impl fmt::Display for VSpans {
         write!(
             f,
             "{}",
-            self.0
-                .iter()
-                .map(|s| s.to_string())
-                .intersperse(",".to_string())
+            Itertools::intersperse(self.0.iter().map(|s| s.to_string()), ",".to_string())
                 .collect::<String>()
         )
     }
@@ -438,10 +435,7 @@ impl Display for ChaptersVerses {
         write!(
             f,
             "{}",
-            self.0
-                .iter()
-                .map(|cv| cv.to_string())
-                .intersperse("; ".to_string())
+            Itertools::intersperse(self.0.iter().map(|cv| cv.to_string()), "; ".to_string())
                 .collect::<String>()
         )
     }
