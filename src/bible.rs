@@ -47,7 +47,7 @@ impl FromStr for Chapter {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        CInt::from_str(s).map(Chapter)
+        CInt::from_str(s).map(Self)
     }
 }
 
@@ -118,11 +118,11 @@ pub fn get_references(text: &str) -> References {
 pub struct ParseError(String);
 
 impl ParseError {
-    fn new<T>(message: T) -> ParseError
+    fn new<T>(message: T) -> Self
     where
         T: Display,
     {
-        ParseError(message.to_string())
+        Self(message.to_string())
     }
 }
 
@@ -143,11 +143,11 @@ pub enum VSpan {
 }
 
 impl VSpan {
-    fn at(x: VInt) -> VSpan {
+    fn at(x: VInt) -> Self {
         VSpan::Point(x)
     }
 
-    fn between(from: VInt, to: VInt) -> VSpan {
+    fn between(from: VInt, to: VInt) -> Self {
         assert!(from <= to);
 
         VSpan::Line(from, to)
@@ -170,7 +170,7 @@ impl VSpan {
     }
 
     /// merge in other, which must be touching
-    fn merge(&mut self, other: VSpan) {
+    fn merge(&mut self, other: Self) {
         assert!(self.touches(&other));
 
         use VSpan::*;
@@ -186,19 +186,19 @@ impl VSpan {
     }
 
     /// whether other touches this, where a distance of 1 counts as touching
-    fn touches(&self, other: &VSpan) -> bool {
+    fn touches(&self, other: &Self) -> bool {
         !(self.upper() + 1 < other.lower() || self.lower() > other.upper() + 1)
     }
 }
 
 impl PartialOrd for VSpan {
-    fn partial_cmp(&self, other: &VSpan) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for VSpan {
-    fn cmp(&self, other: &VSpan) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         use Ordering::*;
 
         let lower_cmp = self.lower().cmp(&other.lower());
@@ -247,8 +247,8 @@ impl FromStr for VSpan {
 pub struct VSpans(Vec<VSpan>);
 
 impl VSpans {
-    fn new() -> VSpans {
-        VSpans(Vec::new())
+    fn new() -> Self {
+        Self(Vec::new())
     }
 
     fn is_empty(&self) -> bool {
@@ -290,7 +290,7 @@ impl VSpans {
         }
     }
 
-    fn merge(&mut self, other: VSpans) {
+    fn merge(&mut self, other: Self) {
         for item in other.0 {
             self.insert(item);
         }
@@ -298,13 +298,13 @@ impl VSpans {
 }
 
 impl PartialOrd for VSpans {
-    fn partial_cmp(&self, other: &VSpans) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(&other))
     }
 }
 
 impl Ord for VSpans {
-    fn cmp(&self, other: &VSpans) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         slice_cmp(&self.0, &other.0)
     }
 }
@@ -320,7 +320,7 @@ impl<'a> IntoIterator for &'a VSpans {
 
 impl FromIterator<VSpan> for VSpans {
     fn from_iter<I: IntoIterator<Item = VSpan>>(iter: I) -> Self {
-        let mut spans = VSpans::new();
+        let mut spans = Self::new();
 
         for s in iter {
             spans.insert(s);
@@ -359,19 +359,19 @@ pub struct ChapterVerses {
 }
 
 impl ChapterVerses {
-    fn new(chapter: Chapter, verses: VSpans) -> ChapterVerses {
-        ChapterVerses { chapter, verses }
+    fn new(chapter: Chapter, verses: VSpans) -> Self {
+        Self { chapter, verses }
     }
 }
 
 impl PartialOrd for ChapterVerses {
-    fn partial_cmp(&self, other: &ChapterVerses) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for ChapterVerses {
-    fn cmp(&self, other: &ChapterVerses) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         use Ordering::*;
 
         let chapter_cmp = self.chapter.cmp(&other.chapter);
@@ -397,8 +397,8 @@ impl Display for ChapterVerses {
 pub struct ChaptersVerses(Vec<ChapterVerses>);
 
 impl ChaptersVerses {
-    fn new(item: ChapterVerses) -> ChaptersVerses {
-        ChaptersVerses(vec![item])
+    fn new(item: ChapterVerses) -> Self {
+        Self(vec![item])
     }
 
     fn insert(&mut self, item: ChapterVerses) {
@@ -410,13 +410,13 @@ impl ChaptersVerses {
 }
 
 impl PartialOrd for ChaptersVerses {
-    fn partial_cmp(&self, other: &ChaptersVerses) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for ChaptersVerses {
-    fn cmp(&self, other: &ChaptersVerses) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         slice_cmp(&self.0, &other.0)
     }
 }
@@ -444,8 +444,8 @@ impl Display for ChaptersVerses {
 pub struct References(HashMap<&'static str, ChaptersVerses>);
 
 impl References {
-    fn new() -> References {
-        References(HashMap::new())
+    fn new() -> Self {
+        Self(HashMap::new())
     }
 
     pub fn get(&self, book: &'static str) -> Option<&ChaptersVerses> {
