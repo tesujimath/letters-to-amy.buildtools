@@ -10,8 +10,18 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    if let Err(e) = hugo::dump_posts() {
-        println!("dump_all failed: {:?}", e);
+    if let Err(e) = hugo::walk_posts(|url, header, body| {
+        println!("-------------------- {} '{}'", url, header.title);
+
+        let references = bible::get_references(body);
+
+        for book in bible::books() {
+            if let Some(cvs) = references.get(book) {
+                println!("{} {}", book, cvs);
+            }
+        }
+    }) {
+        println!("failed: {:?}", e);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

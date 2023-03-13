@@ -299,7 +299,7 @@ impl VSpans {
 
 impl PartialOrd for VSpans {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -426,7 +426,7 @@ impl<'a> IntoIterator for &'a ChaptersVerses {
     type IntoIter = std::slice::Iter<'a, ChapterVerses>;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&self.0).into_iter()
+        self.0.iter()
     }
 }
 
