@@ -65,9 +65,8 @@ struct ChapterContext<'a> {
 
 pub fn get_references(text: &str) -> References {
     lazy_static! {
-        // TODO a reference may be either:
         // 1. book chapter, which we use for later context
-        // 2. book chapter:verses, which we extract
+        // 2. book chapter:verses, which we extract, and store the context
         // 3. verse, which we extract using the stored context
         static ref REFERENCE_RE: Regex =
             Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();

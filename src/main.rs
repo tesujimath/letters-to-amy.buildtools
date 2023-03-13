@@ -20,6 +20,8 @@ fn main() -> ExitCode {
                 println!("{} {}", book, cvs);
             }
         }
+
+        Ok(())
     }) {
         println!("failed: {:?}", e);
         ExitCode::FAILURE

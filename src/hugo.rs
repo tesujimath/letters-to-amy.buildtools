@@ -1,14 +1,15 @@
 use super::posts::Header;
+use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::{io, path::Path};
+use std::path::Path;
 
-pub fn walk_posts<F>(handler: F) -> io::Result<()>
+pub fn walk_posts<F>(handler: F) -> Result<()>
 where
-    F: Fn(&str, &Header, &str) + Copy,
+    F: Fn(&str, &Header, &str) -> Result<()> + Copy,
 {
     let roots = [
         Path::new("content").to_owned(),
@@ -26,31 +27,29 @@ where
     }
 }
 
-fn walk<F>(root: &Path, dir: &Path, handler: F) -> io::Result<()>
+fn walk<F>(root: &Path, dir: &Path, handler: F) -> Result<()>
 where
-    F: Fn(&str, &Header, &str) + Copy,
+    F: Fn(&str, &Header, &str) -> Result<()> + Copy,
 {
-    fn parse<F1>(f: &mut File, relpath: &Path, handler: F1) -> io::Result<()>
+    fn parse<F1>(f: &mut File, relpath: &Path, handler: F1) -> Result<()>
     where
-        F1: Fn(&str, &Header, &str) + Copy,
+        F1: Fn(&str, &Header, &str) -> Result<()> + Copy,
     {
         let mut content = String::new();
-        f.read_to_string(&mut content)?;
+        f.read_to_string(&mut content)
+            .context("reading Hugo content to string")?;
 
-        match (relpath.to_str(), get_header_and_body(&content)) {
-            (Some(relpath), Ok((header, body))) => {
-                handler(relpath, &header, body);
-            }
+        match (
+            relpath.to_str(),
+            get_header_and_body(&content).context("failed to get title and body"),
+        ) {
+            (Some(relpath), Ok((header, body))) => handler(relpath, &header, body),
             (None, _) => {
                 println!("WARNING: skipping non-unicode path {:?}", relpath);
+                Ok(())
             }
-            (_, Err(e)) => {
-                println!("failed to get title and body: {}", e);
-            }
+            (_, Err(e)) => Err(e),
         }
-
-        // TODO return error, work out how to stack up errors of different types - enum?
-        Ok(())
     }
 
     let index_path = dir.join("index.md");
@@ -58,11 +57,15 @@ where
         Ok(ref mut f) => {
             // page bundle, so stop here
             let index_relpath = index_path.strip_prefix(root).unwrap();
-            parse(f, index_relpath, handler)?;
+            parse(f, index_relpath, handler)?
         }
         Err(_) => {
             // no page bundle, so walk further
-            for entry in (dir.read_dir()?).flatten() {
+            for entry in (dir
+                .read_dir()
+                .context(format!("read_dir(\"{}\")", dir.to_string_lossy()))?)
+            .flatten()
+            {
                 let file_type = entry.file_type()?;
                 if file_type.is_dir() {
                     walk(root, &entry.path(), handler)?;
@@ -70,7 +73,8 @@ where
                     let entry_path = entry.path();
                     let entry_relpath = entry_path.strip_prefix(root).unwrap();
 
-                    let mut f = File::open(entry.path())?;
+                    let mut f = File::open(entry.path())
+                        .context(format!("open(\"{}\")", entry.path().to_string_lossy()))?;
 
                     parse(&mut f, entry_relpath, handler)?;
                 }
@@ -86,6 +90,8 @@ enum GetHeaderAndBodyErr {
     NoHeader,
     TomlError(toml::de::Error),
 }
+
+impl std::error::Error for GetHeaderAndBodyErr {}
 
 impl fmt::Display for GetHeaderAndBodyErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
