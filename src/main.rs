@@ -10,16 +10,12 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
+    let mut _all_references = posts::AllPostsReferences::new();
+
     if let Err(e) = hugo::walk_posts(|url, header, body| {
-        println!("-------------------- {} '{}'", url, header.title);
+        let post_references = bible::get_references(body);
 
-        let references = bible::get_references(body);
-
-        for book in bible::books() {
-            if let Some(cvs) = references.get(book) {
-                println!("{} {}", book, cvs);
-            }
-        }
+        _all_references.insert(url, &header.title, &post_references);
 
         Ok(())
     }) {

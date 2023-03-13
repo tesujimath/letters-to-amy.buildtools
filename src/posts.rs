@@ -1,24 +1,20 @@
 // TODO remove suppression for dead code warning
 #![allow(dead_code)] //, unused_variables)]
 
-use super::bible::{ChaptersVerses, References};
-use serde::Deserialize;
+use super::bible::{self, ChaptersVerses, References};
 use std::collections::HashMap;
-use std::path::Path;
-
-#[derive(Deserialize, PartialEq, Eq, Debug)]
-pub struct Header {
-    pub title: String,
-}
 
 pub struct Post {
-    title: String,
     url: String,
+    title: String,
 }
 
 impl Post {
-    fn new(title: String, url: String) -> Self {
-        Post { title, url }
+    fn new(url: &str, title: &str) -> Self {
+        Post {
+            url: url.to_owned(),
+            title: title.to_owned(),
+        }
     }
 }
 
@@ -40,17 +36,21 @@ impl<'a> AllPostsReferences<'a> {
         }
     }
 
-    fn add_post(&mut self, entry_relpath: &Path, header: Header) -> &Post {
-        // this will panic on non-unicode paths, don't care for now
-        self.all_posts.push(Post::new(
-            header.title,
-            entry_relpath.to_str().unwrap().to_string(),
-        ));
+    fn add_post(&mut self, url: &str, title: &str) -> &Post {
+        self.all_posts.push(Post::new(url, title));
         self.all_posts.last().unwrap()
     }
 
-    pub fn add_post_refs(&mut self, entry_relpath: &Path, header: Header, _refs: References) {
-        let _post = self.add_post(entry_relpath, header);
+    pub fn insert(&mut self, url: &str, title: &str, refs: &References) {
+        println!("-------------------- {} '{}'", url, title);
+
+        let _post = self.add_post(url, title);
+
+        for book in bible::books() {
+            if let Some(cvs) = refs.get(book) {
+                println!("{} {}", book, cvs);
+            }
+        }
 
         //for (k, v) in refs.into_iter() {}
     }

@@ -1,15 +1,20 @@
-use super::posts::Header;
 use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Deserialize;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-pub fn walk_posts<F>(handler: F) -> Result<()>
+#[derive(Deserialize, PartialEq, Eq, Debug)]
+pub struct Header {
+    pub title: String,
+}
+
+pub fn walk_posts<F>(mut handler: F) -> Result<()>
 where
-    F: Fn(&str, &Header, &str) -> Result<()> + Copy,
+    F: FnMut(&str, &Header, &str) -> Result<()>,
 {
     let roots = [
         Path::new("content").to_owned(),
@@ -19,7 +24,7 @@ where
     match roots.iter().find(|path| path.exists()) {
         Some(root) => {
             let posts_path = root.join("post");
-            walk(&posts_path, &posts_path, handler)
+            walk(&posts_path, &posts_path, &mut handler)
         }
         None => {
             panic!("ERROR: content root not found, run from Hugo root or subdirectory of root");
@@ -27,13 +32,13 @@ where
     }
 }
 
-fn walk<F>(root: &Path, dir: &Path, handler: F) -> Result<()>
+fn walk<F>(root: &Path, dir: &Path, handler: &mut F) -> Result<()>
 where
-    F: Fn(&str, &Header, &str) -> Result<()> + Copy,
+    F: FnMut(&str, &Header, &str) -> Result<()>,
 {
-    fn parse<F1>(f: &mut File, relpath: &Path, handler: F1) -> Result<()>
+    fn parse<F1>(f: &mut File, relpath: &Path, handler: &mut F1) -> Result<()>
     where
-        F1: Fn(&str, &Header, &str) -> Result<()> + Copy,
+        F1: FnMut(&str, &Header, &str) -> Result<()>,
     {
         let mut content = String::new();
         f.read_to_string(&mut content)
