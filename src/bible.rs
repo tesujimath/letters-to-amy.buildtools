@@ -461,7 +461,15 @@ impl References {
     }
 }
 
-// TODO implement IntoIterator for BookChaptersVerses, maybe to take ownership
+/// consuming iterator
+impl IntoIterator for References {
+    type Item = (&'static str, ChaptersVerses);
+    type IntoIter = std::collections::hash_map::IntoIter<&'static str, ChaptersVerses>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 fn book_aliases() -> &'static Vec<Vec<&'static str>> {
     lazy_static! {

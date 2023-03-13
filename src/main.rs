@@ -12,10 +12,12 @@ struct Cli {
 fn main() -> ExitCode {
     let mut _all_references = posts::AllPostsReferences::new();
 
-    if let Err(e) = hugo::walk_posts(|url, header, body| {
+    let mut content = hugo::Content::new();
+
+    if let Err(e) = content.walk_posts(|metadata, body| {
         let post_references = bible::get_references(body);
 
-        _all_references.insert(url, &header.title, &post_references);
+        _all_references.insert(metadata, post_references);
 
         Ok(())
     }) {

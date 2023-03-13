@@ -1,55 +1,67 @@
 // TODO remove suppression for dead code warning
 #![allow(dead_code)] //, unused_variables)]
 
-use super::bible::{self, ChaptersVerses, References};
-use std::collections::HashMap;
+use super::bible::{ChaptersVerses, References};
+use super::hugo::Metadata;
+use std::{cmp::Ordering, collections::HashMap};
 
-pub struct Post {
-    url: String,
-    title: String,
-}
-
-impl Post {
-    fn new(url: &str, title: &str) -> Self {
-        Post {
-            url: url.to_owned(),
-            title: title.to_owned(),
-        }
-    }
-}
-
+#[derive(PartialEq, Eq, Debug)]
 pub struct PostReferences<'a> {
-    post: &'a Post,
+    metadata: &'a Metadata,
     cvs: ChaptersVerses,
 }
 
+impl<'a> PostReferences<'a> {
+    fn new(metadata: &'a Metadata, cvs: ChaptersVerses) -> Self {
+        Self { metadata, cvs }
+    }
+}
+
+impl<'a> PartialOrd for PostReferences<'a> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'a> Ord for PostReferences<'a> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.cvs.cmp(&other.cvs)
+    }
+}
+
 pub struct AllPostsReferences<'a> {
-    all_posts: Vec<Post>,
-    post_references_by_book: HashMap<&'static str, PostReferences<'a>>,
+    refs_by_book: HashMap<&'static str, Vec<PostReferences<'a>>>,
 }
 
 impl<'a> AllPostsReferences<'a> {
     pub fn new() -> Self {
         AllPostsReferences {
-            all_posts: Vec::new(),
-            post_references_by_book: HashMap::new(),
+            refs_by_book: HashMap::new(),
         }
     }
 
-    fn add_post(&mut self, url: &str, title: &str) -> &Post {
-        self.all_posts.push(Post::new(url, title));
-        self.all_posts.last().unwrap()
-    }
+    pub fn insert(&mut self, m: &Metadata, refs: References) {
+        println!("-------------------- {} '{}'", &m.url, &m.header.title);
 
-    pub fn insert(&mut self, url: &str, title: &str, refs: &References) {
-        println!("-------------------- {} '{}'", url, title);
+        for (book, cvs) in refs {
+            println!("{} {}", book, cvs);
+            // let post_refs = PostReferences::new(m, cvs);
+            // let book_seen = self.refs_by_book.contains_key(book);
+            // if book_seen {
+            //     let mut existing_posts_refs = &mut self.refs_by_book[book];
 
-        let _post = self.add_post(url, title);
-
-        for book in bible::books() {
-            if let Some(cvs) = refs.get(book) {
-                println!("{} {}", book, cvs);
-            }
+            //     match existing_posts_refs.binary_search(&post_refs) {
+            //         Ok(_i) => {
+            //             // repeated insert, ignore
+            //             println!("WARNING: repeated post insertion for {}", &m.url);
+            //         }
+            //         Err(i) => {
+            //             existing_posts_refs.insert(i, post_refs);
+            //         }
+            //     }
+            // } else {
+            //     self.refs_by_book.insert(book, vec![post_refs]);
+            // }
         }
 
         //for (k, v) in refs.into_iter() {}

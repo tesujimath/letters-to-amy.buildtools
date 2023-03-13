@@ -12,33 +12,55 @@ pub struct Header {
     pub title: String,
 }
 
-pub fn walk_posts<F>(mut handler: F) -> Result<()>
-where
-    F: FnMut(&str, &Header, &str) -> Result<()>,
-{
-    let roots = [
-        Path::new("content").to_owned(),
-        Path::new("..").join("content"),
-    ];
+#[derive(PartialEq, Eq, Debug)]
+pub struct Metadata {
+    pub url: String,
+    pub header: Header,
+}
 
-    match roots.iter().find(|path| path.exists()) {
-        Some(root) => {
-            let posts_path = root.join("post");
-            walk(&posts_path, &posts_path, &mut handler)
-        }
-        None => {
-            panic!("ERROR: content root not found, run from Hugo root or subdirectory of root");
+impl Metadata {
+    fn new(url: &str, header: Header) -> Self {
+        Metadata {
+            url: url.to_owned(),
+            header,
         }
     }
 }
 
-fn walk<F>(root: &Path, dir: &Path, handler: &mut F) -> Result<()>
-where
-    F: FnMut(&str, &Header, &str) -> Result<()>,
-{
-    fn parse<F1>(f: &mut File, relpath: &Path, handler: &mut F1) -> Result<()>
+pub struct Content {
+    metadatas: Vec<Metadata>,
+}
+
+impl Content {
+    pub fn new() -> Self {
+        Self {
+            metadatas: Vec::new(),
+        }
+    }
+
+    pub fn walk_posts<F>(&mut self, mut handler: F) -> Result<()>
     where
-        F1: FnMut(&str, &Header, &str) -> Result<()>,
+        F: FnMut(&Metadata, &str) -> Result<()>,
+    {
+        let roots = [
+            Path::new("content").to_owned(),
+            Path::new("..").join("content"),
+        ];
+
+        match roots.iter().find(|path| path.exists()) {
+            Some(root) => {
+                let posts_path = root.join("post");
+                self.walk(&posts_path, &posts_path, &mut handler)
+            }
+            None => {
+                panic!("ERROR: content root not found, run from Hugo root or subdirectory of root");
+            }
+        }
+    }
+
+    fn parse<F>(&mut self, f: &mut File, relpath: &Path, handler: &mut F) -> Result<()>
+    where
+        F: FnMut(&Metadata, &str) -> Result<()>,
     {
         let mut content = String::new();
         f.read_to_string(&mut content)
@@ -48,7 +70,14 @@ where
             relpath.to_str(),
             get_header_and_body(&content).context("failed to get title and body"),
         ) {
-            (Some(relpath), Ok((header, body))) => handler(relpath, &header, body),
+            (Some(relpath), Ok((header, body))) => {
+                let metadata = Metadata::new(relpath, header);
+
+                self.metadatas.push(metadata);
+                let metadata_ref = self.metadatas.last().unwrap();
+
+                handler(metadata_ref, body)
+            }
             (None, _) => {
                 println!("WARNING: skipping non-unicode path {:?}", relpath);
                 Ok(())
@@ -57,37 +86,42 @@ where
         }
     }
 
-    let index_path = dir.join("index.md");
-    match File::open(&index_path) {
-        Ok(ref mut f) => {
-            // page bundle, so stop here
-            let index_relpath = index_path.strip_prefix(root).unwrap();
-            parse(f, index_relpath, handler)?
-        }
-        Err(_) => {
-            // no page bundle, so walk further
-            for entry in (dir
-                .read_dir()
-                .context(format!("read_dir(\"{}\")", dir.to_string_lossy()))?)
-            .flatten()
-            {
-                let file_type = entry.file_type()?;
-                if file_type.is_dir() {
-                    walk(root, &entry.path(), handler)?;
-                } else if file_type.is_file() {
-                    let entry_path = entry.path();
-                    let entry_relpath = entry_path.strip_prefix(root).unwrap();
+    fn walk<F>(&mut self, root: &Path, dir: &Path, handler: &mut F) -> Result<()>
+    where
+        F: FnMut(&Metadata, &str) -> Result<()>,
+    {
+        let index_path = dir.join("index.md");
+        match File::open(&index_path) {
+            Ok(ref mut f) => {
+                // page bundle, so stop here
+                let index_relpath = index_path.strip_prefix(root).unwrap();
+                self.parse(f, index_relpath, handler)?
+            }
+            Err(_) => {
+                // no page bundle, so walk further
+                for entry in (dir
+                    .read_dir()
+                    .context(format!("read_dir(\"{}\")", dir.to_string_lossy()))?)
+                .flatten()
+                {
+                    let file_type = entry.file_type()?;
+                    if file_type.is_dir() {
+                        self.walk(root, &entry.path(), handler)?;
+                    } else if file_type.is_file() {
+                        let entry_path = entry.path();
+                        let entry_relpath = entry_path.strip_prefix(root).unwrap();
 
-                    let mut f = File::open(entry.path())
-                        .context(format!("open(\"{}\")", entry.path().to_string_lossy()))?;
+                        let mut f = File::open(entry.path())
+                            .context(format!("open(\"{}\")", entry.path().to_string_lossy()))?;
 
-                    parse(&mut f, entry_relpath, handler)?;
+                        self.parse(&mut f, entry_relpath, handler)?;
+                    }
                 }
             }
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
