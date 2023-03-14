@@ -15,6 +15,12 @@
           pkgs = import nixpkgs {
             inherit system overlays;
           };
+          # cargo-nightly based on https://github.com/oxalica/rust-overlay/issues/82
+          nightly = pkgs.rust-bin.selectLatestNightlyWith (t: t.default);
+          cargo-nightly = pkgs.writeShellScriptBin "cargo-nightly" ''
+              export RUSTC="${nightly}/bin/rustc";
+              exec "${nightly}/bin/cargo" "$@"
+          '';
         in
           with pkgs;
           {
@@ -22,6 +28,7 @@
               nativeBuildInputs = [
                 cargo
                 cargo-flamegraph
+                cargo-nightly
                 clippy
                 gcc
                 gdb
