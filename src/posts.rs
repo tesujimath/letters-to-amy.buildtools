@@ -3,6 +3,7 @@
 
 use super::bible::{ChaptersVerses, References};
 use super::hugo::Metadata;
+use std::collections::hash_map;
 use std::{cmp::Ordering, collections::HashMap};
 
 #[derive(PartialEq, Eq, Debug)]
@@ -29,41 +30,64 @@ impl<'a> Ord for PostReferences<'a> {
     }
 }
 
-pub struct AllPostsReferences<'a> {
+pub struct Posts<'a> {
+    metadata: Vec<Metadata>,
+    last_metadata: Option<Metadata>,
+    refs: Vec<PostReferences<'a>>,
+    last_post: Option<PostReferences<'a>>,
     refs_by_book: HashMap<&'static str, Vec<PostReferences<'a>>>,
 }
 
-impl<'a> AllPostsReferences<'a> {
+impl<'a> Posts<'a> {
     pub fn new() -> Self {
-        AllPostsReferences {
+        Posts {
+            metadata: Vec::new(),
+            last_metadata: None,
+            refs: Vec::new(),
+            last_post: None,
             refs_by_book: HashMap::new(),
         }
     }
 
-    pub fn insert(&mut self, m: &Metadata, refs: References) {
-        println!("-------------------- {} '{}'", &m.url, &m.header.title);
+    // the lifetime 'a here is what causes the problem with the borrowed data escaping:
+    // or similarly the bound of 'a on 'b
+    pub fn do_something(&'a mut self, a: &str, metadata: &Metadata, body: &str)
+    //where
+    //    'b: 'a,
+    {
+        println!("doing something with {} {:?} {}", a, metadata, body);
+    }
+
+    pub fn insert(&'a mut self, metadata: Metadata, refs: References) {
+        println!(
+            "-------------------- {} '{}'",
+            &metadata.url, &metadata.header.title
+        );
+
+        //self.last_metadata = Some(metadata);
+        //let m = self.last_metadata.as_ref().unwrap();
+
+        self.metadata.push(metadata);
+        let m = self.metadata.last().unwrap();
 
         for (book, cvs) in refs {
-            println!("{} {}", book, cvs);
-            // let post_refs = PostReferences::new(m, cvs);
-            // let book_seen = self.refs_by_book.contains_key(book);
-            // if book_seen {
-            //     let mut existing_posts_refs = &mut self.refs_by_book[book];
+            println!("{} {}", book, &cvs);
+            let post_refs = PostReferences::new(m, cvs);
 
-            //     match existing_posts_refs.binary_search(&post_refs) {
-            //         Ok(_i) => {
-            //             // repeated insert, ignore
-            //             println!("WARNING: repeated post insertion for {}", &m.url);
-            //         }
-            //         Err(i) => {
-            //             existing_posts_refs.insert(i, post_refs);
-            //         }
+            self.last_post = Some(post_refs); // None works here
+                                              //self.refs.push(post_refs);
+
+            // use hash_map::Entry::*;
+            // match self.refs_by_book.entry(book) {
+            //     Occupied(mut o) => {
+            //         let refs = o.get_mut();
+            //         // TODO insert in order
+            //         refs.push(post_refs);
             //     }
-            // } else {
-            //     self.refs_by_book.insert(book, vec![post_refs]);
+            //     Vacant(v) => {
+            //         v.insert(vec![post_refs]);
+            //     }
             // }
         }
-
-        //for (k, v) in refs.into_iter() {}
     }
 }

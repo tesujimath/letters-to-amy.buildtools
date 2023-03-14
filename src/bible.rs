@@ -443,7 +443,8 @@ impl Display for ChaptersVerses {
 pub struct References(HashMap<&'static str, ChaptersVerses>);
 
 impl References {
-    fn new() -> Self {
+    // TODO not pub
+    pub fn new() -> Self {
         Self(HashMap::new())
     }
 

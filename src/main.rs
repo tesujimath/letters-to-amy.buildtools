@@ -10,16 +10,26 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    let mut _all_references = posts::AllPostsReferences::new();
+    let mut posts = posts::Posts::new();
 
-    let mut content = hugo::Content::new();
+    if let Err(e) = hugo::walk_posts(|metadata, body| {
+        let refs = bible::get_references(body);
 
-    if let Err(e) = content.walk_posts(|metadata, body| {
-        let post_references = bible::get_references(body);
+        //posts.insert(metadata, refs);
 
-        _all_references.insert(metadata, post_references);
+        // posts.insert(
+        //     hugo::Metadata {
+        //         url: "url".to_string(),
+        //         header: hugo::Header {
+        //             title: "My Title".to_string(),
+        //         },
+        //     },
+        //     bible::References::new(),
+        // );
 
-        Ok(())
+        posts.do_something("hello", &metadata, body);
+
+        Ok::<(), anyhow::Error>(())
     }) {
         println!("failed: {:?}", e);
         ExitCode::FAILURE
