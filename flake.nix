@@ -16,8 +16,20 @@
             inherit system overlays;
           };
         in
+          with pkgs;
           {
-            devShells.default = import ./shell.nix { inherit pkgs; };
+            devShells.default = mkShell {
+              nativeBuildInputs = [
+                cargo
+                cargo-flamegraph
+                clippy
+                gcc
+                gdb
+                rust-analyzer
+                rust-bin.stable.latest.default
+                rustfmt
+              ];
+            };
           }
       );
 }
