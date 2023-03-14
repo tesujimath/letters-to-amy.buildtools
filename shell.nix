@@ -7,7 +7,7 @@ pkgs.mkShell {
     pkgs.gcc
     pkgs.gdb
     pkgs.rust-analyzer
-    pkgs.rustc
+    pkgs.rust-bin.stable.latest.default
     pkgs.rustfmt
   ];
 }
