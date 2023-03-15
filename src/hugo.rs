@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize, PartialEq, Eq, Debug)]
 pub struct Header {
@@ -27,23 +27,31 @@ impl Metadata {
     }
 }
 
-pub fn walk_posts<F>(mut handler: F) -> Result<()>
-where
-    F: FnMut(Metadata, &str),
-{
+pub fn content_root() -> Option<PathBuf> {
     let roots = [
         Path::new("content").to_owned(),
         Path::new("..").join("content"),
     ];
 
-    match roots.iter().find(|path| path.exists()) {
-        Some(root) => {
-            let posts_path = root.join("post");
-            walk(&posts_path, &posts_path, &mut handler)
-        }
-        None => {
-            panic!("ERROR: content root not found, run from Hugo root or subdirectory of root");
-        }
+    let root = roots.iter().find(|path| path.exists());
+
+    if root == None {
+        println!("WARNING: content root not found, run from Hugo root or subdirectory of root");
+    }
+
+    root.cloned()
+}
+
+pub fn walk_posts<F>(mut handler: F) -> Result<()>
+where
+    F: FnMut(Metadata, &str),
+{
+    if let Some(root) = content_root() {
+        let posts_path = root.join("post");
+        walk(&posts_path, &posts_path, &mut handler)
+    } else {
+        // TODO not really OK
+        Ok(())
     }
 }
 

@@ -5,6 +5,7 @@ use super::bible::{ChaptersVerses, References};
 use super::hugo::Metadata;
 use super::util::insert_in_order;
 use std::collections::hash_map;
+use std::io::{Read, Write};
 use std::{
     cmp::Ordering,
     collections::HashMap,
@@ -85,12 +86,21 @@ impl Posts {
         }
     }
 
-    pub fn dump(&self) {
+    pub fn dump(&self, mut header: impl Read, mut outfile: impl Write) {
+        let mut buffer = Vec::new();
+        header.read_to_end(&mut buffer).unwrap();
+        outfile.write_all("---\n".as_bytes());
+        outfile.write_all(&buffer);
+        outfile.write_all("---\n".as_bytes());
+
         for book in super::bible::books() {
             if let Some(refs) = self.refs_by_book.get(book) {
-                println!("==== {}", book);
+                outfile.write_all(format!("\n# {}\n\n| | |\n| --- | --- |\n", book).as_bytes());
                 for r in refs {
-                    println!("        {} {}", self.metadata[r.post_index].header.title, r)
+                    outfile.write_all(
+                        format!("| {} | {} |\n", self.metadata[r.post_index].header.title, r)
+                            .as_bytes(),
+                    );
                 }
             }
         }
