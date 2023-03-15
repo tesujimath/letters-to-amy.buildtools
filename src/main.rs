@@ -10,18 +10,13 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    let mut posts_list = Vec::new();
+    let mut posts = posts::Posts::new();
 
     if let Err(e) = hugo::walk_posts(|metadata, body| {
-        posts_list.push((metadata, bible::get_references(body)));
+        posts.insert(metadata, bible::get_references(body));
     }) {
         println!("failed: {:?}", e);
         return ExitCode::FAILURE;
-    }
-
-    let mut posts = posts::Posts::new();
-    for (m, refs) in &posts_list {
-        posts.insert(m, refs);
     }
 
     posts.dump();

@@ -82,8 +82,6 @@ pub fn get_references(text: &str) -> References {
             .map(|m_o| m_o.map(|m| m.as_str()))
             .collect::<Vec<Option<&str>>>();
 
-        //println!("{:?}", fields);
-
         let book = get_book(fields[3], fields[4]);
         let chapter_str = fields[5];
         if let (Some(book), Some(chapter_str)) = (book, chapter_str) {
@@ -443,8 +441,7 @@ impl Display for ChaptersVerses {
 pub struct References(HashMap<&'static str, ChaptersVerses>);
 
 impl References {
-    // TODO not pub
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self(HashMap::new())
     }
 
@@ -461,6 +458,7 @@ impl References {
         }
     }
 
+    /// non-consuming iterator
     pub fn iter(&self) -> std::collections::hash_map::Iter<&'static str, ChaptersVerses> {
         self.0.iter()
     }
