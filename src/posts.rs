@@ -3,6 +3,7 @@
 
 use super::bible::{ChaptersVerses, References};
 use super::hugo::Metadata;
+use super::util::insert_in_order;
 use std::collections::hash_map;
 use std::{
     cmp::Ordering,
@@ -24,7 +25,7 @@ impl PostReferences {
 
 impl Display for PostReferences {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{} {}", self.post_index, &self.cvs)
+        write!(f, "{}", &self.cvs)
     }
 }
 
@@ -36,7 +37,11 @@ impl PartialOrd for PostReferences {
 
 impl Ord for PostReferences {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.cvs.cmp(&other.cvs)
+        use Ordering::*;
+        match self.cvs.cmp(&other.cvs) {
+            Equal => self.post_index.cmp(&other.post_index),
+            cmp => cmp,
+        }
     }
 }
 
@@ -71,9 +76,7 @@ impl Posts {
             use hash_map::Entry::*;
             match self.refs_by_book.entry(book) {
                 Occupied(mut o) => {
-                    let refs = o.get_mut();
-                    // TODO insert in order
-                    refs.push(post_refs);
+                    insert_in_order(o.get_mut(), post_refs);
                 }
                 Vacant(v) => {
                     v.insert(vec![post_refs]);
@@ -85,9 +88,9 @@ impl Posts {
     pub fn dump(&self) {
         for book in super::bible::books() {
             if let Some(refs) = self.refs_by_book.get(book) {
-                println!("{}", book);
+                println!("==== {}", book);
                 for r in refs {
-                    println!("    {} {}", self.metadata[r.post_index].header.title, r)
+                    println!("        {} {}", self.metadata[r.post_index].header.title, r)
                 }
             }
         }

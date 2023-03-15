@@ -14,3 +14,16 @@ fn test_slice_cmp() {
     assert_eq!(slice_cmp(&[1, 2], &[1, 3]), Less);
     assert_eq!(slice_cmp::<i32>(&[], &[]), Equal);
 }
+
+#[test]
+fn x() {
+    let mut v = Vec::new();
+    insert_in_order(&mut v, 2);
+    insert_in_order(&mut v, 1);
+    insert_in_order(&mut v, 2);
+    insert_in_order(&mut v, 6);
+    insert_in_order(&mut v, 3);
+
+    let expected = vec![1, 2, 3, 6];
+    assert_eq!(&v, &expected);
+}

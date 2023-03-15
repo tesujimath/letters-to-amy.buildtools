@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Debug;
 
 /// compare slices element-wise where shorter and otherwise equal means less than
 pub fn slice_cmp<T>(this: &[T], other: &[T]) -> Ordering
@@ -27,6 +28,22 @@ where
         }
     }
     Equal
+}
+
+/// insert preserving order, skipping duplicates
+pub fn insert_in_order<T>(this: &mut Vec<T>, item: T)
+where
+    T: Ord + Eq + Debug,
+{
+    match this.binary_search(&item) {
+        Ok(i) => {
+            // repeated insert, ignore
+            assert!(item == this[i], "{:?} == {:?}", &item, &this[i]);
+        }
+        Err(i) => {
+            this.insert(i, item);
+        }
+    }
 }
 
 mod tests;
