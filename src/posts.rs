@@ -49,13 +49,8 @@ impl<'a> Posts<'a> {
         }
     }
 
-    // the lifetime 'a here is what causes the problem with the borrowed data escaping:
-    // or similarly the bound of 'a on 'b
-    pub fn do_something(&'a mut self, a: &str, metadata: &Metadata, body: &str)
-    //where
-    //    'b: 'a,
-    {
-        println!("doing something with {} {:?} {}", a, metadata, body);
+    pub fn do_something(&'a mut self, x: i32, y: i32) {
+        println!("doing something with {} {}", x, y);
     }
 
     pub fn insert(&'a mut self, metadata: Metadata, refs: References) {
