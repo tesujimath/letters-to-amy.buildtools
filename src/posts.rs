@@ -4,7 +4,11 @@
 use super::bible::{ChaptersVerses, References};
 use super::hugo::Metadata;
 use std::collections::hash_map;
-use std::{cmp::Ordering, collections::HashMap};
+use std::{
+    cmp::Ordering,
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct PostReferences<'a> {
@@ -15,6 +19,12 @@ pub struct PostReferences<'a> {
 impl<'a> PostReferences<'a> {
     fn new(metadata: &'a Metadata, cvs: &'a ChaptersVerses) -> Self {
         Self { metadata, cvs }
+    }
+}
+
+impl<'a> Display for PostReferences<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{} {}", self.metadata.header.title, self.cvs)
     }
 }
 
@@ -31,14 +41,14 @@ impl<'a> Ord for PostReferences<'a> {
 }
 
 pub struct Posts<'a> {
-    refs: Vec<PostReferences<'a>>,
+    //refs: Vec<PostReferences<'a>>,
     refs_by_book: HashMap<&'static str, Vec<PostReferences<'a>>>,
 }
 
 impl<'a> Posts<'a> {
     pub fn new() -> Self {
         Posts {
-            refs: Vec::new(),
+            //refs: Vec::new(),
             refs_by_book: HashMap::new(),
         }
     }
@@ -56,19 +66,30 @@ impl<'a> Posts<'a> {
             println!("{} {}", book, &cvs);
             let post_refs = PostReferences::new(metadata, cvs);
 
-            self.refs.push(post_refs);
+            //self.refs.push(post_refs);
 
-            // use hash_map::Entry::*;
-            // match self.refs_by_book.entry(book) {
-            //     Occupied(mut o) => {
-            //         let refs = o.get_mut();
-            //         // TODO insert in order
-            //         refs.push(post_refs);
-            //     }
-            //     Vacant(v) => {
-            //         v.insert(vec![post_refs]);
-            //     }
-            // }
+            use hash_map::Entry::*;
+            match self.refs_by_book.entry(book) {
+                Occupied(mut o) => {
+                    let refs = o.get_mut();
+                    // TODO insert in order
+                    refs.push(post_refs);
+                }
+                Vacant(v) => {
+                    v.insert(vec![post_refs]);
+                }
+            }
+        }
+    }
+
+    pub fn dump(&self) {
+        for book in super::bible::books() {
+            if let Some(refs) = self.refs_by_book.get(book) {
+                println!("{}", book);
+                for r in refs {
+                    println!("    {}", r)
+                }
+            }
         }
     }
 }

@@ -24,6 +24,8 @@ fn main() -> ExitCode {
         posts.insert(m, refs);
     }
 
+    posts.dump();
+
     ExitCode::SUCCESS
 }
 
