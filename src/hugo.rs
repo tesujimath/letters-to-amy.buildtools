@@ -29,7 +29,7 @@ impl Metadata {
 
 pub fn walk_posts<F>(mut handler: F) -> Result<()>
 where
-    F: FnMut(Metadata, &str) -> Result<()>,
+    F: FnMut(Metadata, &str),
 {
     let roots = [
         Path::new("content").to_owned(),
@@ -49,7 +49,7 @@ where
 
 fn parse<F>(f: &mut File, relpath: &Path, handler: &mut F) -> Result<()>
 where
-    F: FnMut(Metadata, &str) -> Result<()>,
+    F: FnMut(Metadata, &str),
 {
     let mut content = String::new();
     f.read_to_string(&mut content)
@@ -62,7 +62,9 @@ where
         (Some(relpath), Ok((header, body))) => {
             let metadata = Metadata::new(relpath, header);
 
-            handler(metadata, body)
+            handler(metadata, body);
+
+            Ok(())
         }
         (None, _) => {
             println!("WARNING: skipping non-unicode path {:?}", relpath);
@@ -74,7 +76,7 @@ where
 
 fn walk<F>(root: &Path, dir: &Path, handler: &mut F) -> Result<()>
 where
-    F: FnMut(Metadata, &str) -> Result<()>,
+    F: FnMut(Metadata, &str),
 {
     let index_path = dir.join("index.md");
     match File::open(&index_path) {

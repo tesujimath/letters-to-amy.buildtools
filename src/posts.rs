@@ -9,11 +9,11 @@ use std::{cmp::Ordering, collections::HashMap};
 #[derive(PartialEq, Eq, Debug)]
 pub struct PostReferences<'a> {
     metadata: &'a Metadata,
-    cvs: ChaptersVerses,
+    cvs: &'a ChaptersVerses,
 }
 
 impl<'a> PostReferences<'a> {
-    fn new(metadata: &'a Metadata, cvs: ChaptersVerses) -> Self {
+    fn new(metadata: &'a Metadata, cvs: &'a ChaptersVerses) -> Self {
         Self { metadata, cvs }
     }
 }
@@ -31,46 +31,32 @@ impl<'a> Ord for PostReferences<'a> {
 }
 
 pub struct Posts<'a> {
-    metadata: Vec<Metadata>,
-    last_metadata: Option<Metadata>,
     refs: Vec<PostReferences<'a>>,
-    last_post: Option<PostReferences<'a>>,
     refs_by_book: HashMap<&'static str, Vec<PostReferences<'a>>>,
 }
 
 impl<'a> Posts<'a> {
     pub fn new() -> Self {
         Posts {
-            metadata: Vec::new(),
-            last_metadata: None,
             refs: Vec::new(),
-            last_post: None,
             refs_by_book: HashMap::new(),
         }
     }
 
-    pub fn do_something(&'a mut self, x: i32, y: i32) {
-        println!("doing something with {} {}", x, y);
-    }
-
-    pub fn insert(&'a mut self, metadata: Metadata, refs: References) {
+    pub fn insert<'b>(&mut self, metadata: &'b Metadata, refs: &'b References)
+    where
+        'b: 'a,
+    {
         println!(
             "-------------------- {} '{}'",
-            &metadata.url, &metadata.header.title
+            metadata.url, metadata.header.title
         );
 
-        //self.last_metadata = Some(metadata);
-        //let m = self.last_metadata.as_ref().unwrap();
-
-        self.metadata.push(metadata);
-        let m = self.metadata.last().unwrap();
-
-        for (book, cvs) in refs {
+        for (book, cvs) in refs.iter() {
             println!("{} {}", book, &cvs);
-            let post_refs = PostReferences::new(m, cvs);
+            let post_refs = PostReferences::new(metadata, cvs);
 
-            self.last_post = Some(post_refs); // None works here
-                                              //self.refs.push(post_refs);
+            self.refs.push(post_refs);
 
             // use hash_map::Entry::*;
             // match self.refs_by_book.entry(book) {

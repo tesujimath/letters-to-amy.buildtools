@@ -460,6 +460,10 @@ impl References {
             }
         }
     }
+
+    pub fn iter(&self) -> std::collections::hash_map::Iter<&'static str, ChaptersVerses> {
+        self.0.iter()
+    }
 }
 
 /// consuming iterator

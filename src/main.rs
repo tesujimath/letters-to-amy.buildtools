@@ -1,9 +1,6 @@
 use std::{path::PathBuf, process::ExitCode};
 
-use anyhow::Result;
-use bible::References;
 use clap::Parser;
-use hugo::Metadata;
 
 #[derive(Parser)]
 struct Cli {
@@ -13,32 +10,21 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    let mut posts = posts::Posts::new();
+    let mut posts_list = Vec::new();
 
     if let Err(e) = hugo::walk_posts(|metadata, body| {
-        let refs = bible::get_references(body);
-
-        //posts.insert(metadata, refs);
-
-        // posts.insert(
-        //     hugo::Metadata {
-        //         url: "url".to_string(),
-        //         header: hugo::Header {
-        //             title: "My Title".to_string(),
-        //         },
-        //     },
-        //     bible::References::new(),
-        // );
-
-        //posts.do_something("hello", &metadata, body);
-
-        Ok::<(), anyhow::Error>(())
+        posts_list.push((metadata, bible::get_references(body)));
     }) {
         println!("failed: {:?}", e);
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
+        return ExitCode::FAILURE;
     }
+
+    let mut posts = posts::Posts::new();
+    for (m, refs) in &posts_list {
+        posts.insert(m, refs);
+    }
+
+    ExitCode::SUCCESS
 }
 
 mod bible;
