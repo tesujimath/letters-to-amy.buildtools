@@ -21,12 +21,13 @@ fn main() -> ExitCode {
     }
 
     if let Some(root) = hugo::content_root() {
-        let page_dir = root.join("page").join("index");
+        let page_dir = root.join("page").join("scripture-index");
         let mut page_header = fs::read_to_string(page_dir.join("page-header.yaml")).unwrap();
         let mut outfile = File::create(page_dir.join("index.md")).unwrap();
-        let index_dir = root.join("index");
+        let index_section_dir = root.join("scripture-index");
 
-        posts.dump(&page_header, outfile, &index_dir);
+        fs::create_dir_all(&index_section_dir).unwrap();
+        posts.dump(&page_header, outfile, &index_section_dir);
     }
 
     ExitCode::SUCCESS

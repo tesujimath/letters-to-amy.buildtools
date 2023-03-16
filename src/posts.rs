@@ -109,18 +109,18 @@ impl Posts {
         }
 
         let abbrev = super::bible::abbrev(book).unwrap_or(book);
-        let href = format!("[{}]({{{{<ref \"/index/{}\" >}}}})", abbrev, slug);
+        let href = format!("[{}]({{{{<ref \"/scripture-index/{}\" >}}}})", abbrev, slug);
 
         Ok(href)
     }
 
-    pub fn dump(&self, page_header: &str, mut outfile: impl Write, index_dir: &PathBuf) {
+    pub fn dump(&self, page_header: &str, mut outfile: impl Write, index_section_dir: &PathBuf) {
         outfile.write_all(format!("---\n{}---\n", page_header).as_bytes());
 
         let mut hrefs = Vec::new();
         for book in super::bible::books() {
             if let Some(refs) = self.refs_by_book.get(book) {
-                let href = self.write_book_refs(index_dir, book, refs).unwrap();
+                let href = self.write_book_refs(index_section_dir, book, refs).unwrap();
                 hrefs.push(href);
             }
         }
