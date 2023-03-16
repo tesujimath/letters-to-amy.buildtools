@@ -142,7 +142,9 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
                 }
             }
             None => {
-                warnings.push(format!("missing context for '{}'", fields[0].unwrap_or("")));
+                if !vspans.is_empty() {
+                    warnings.push(format!("missing context for '{}'", fields[0].unwrap_or("")));
+                }
             }
         }
     }
