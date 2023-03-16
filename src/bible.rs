@@ -82,7 +82,7 @@ pub fn get_references(error_context: &str, text: &str) -> References {
         // 4. book verse
         static ref REFERENCE_RE: Regex =
             //           (bare verse          )(  prefix     book                  chapter verses)
-            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)(:([\d:,\s-]+)[ab]?)?)").unwrap();
+            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)(:(\d[\d:,\s-]*)[ab]?)?)").unwrap();
     }
 
     let mut references = References::new();
