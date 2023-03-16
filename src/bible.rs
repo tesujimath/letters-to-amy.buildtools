@@ -74,7 +74,7 @@ struct ChapterContext<'a> {
     chapter: Chapter,
 }
 
-pub fn get_references(error_context: &str, text: &str) -> References {
+pub fn get_references(text: &str) -> (References, Vec<String>) {
     lazy_static! {
         // 1. book chapter, which we use for later context
         // 2. book chapter:verses, which we extract, and store the context
@@ -86,6 +86,8 @@ pub fn get_references(error_context: &str, text: &str) -> References {
     }
 
     let mut references = References::new();
+    let mut warnings = Vec::new();
+
     let mut chapter_context: Option<ChapterContext> = None;
 
     for cap in REFERENCE_RE.captures_iter(text) {
@@ -112,18 +114,18 @@ pub fn get_references(error_context: &str, text: &str) -> References {
 
         match chapter_context {
             Some(ctx) => {
-                references.insert(ctx.book, ChapterVerses::new(ctx.chapter, vspans));
+                let cv = ChapterVerses::new(ctx.chapter, vspans);
+                // useful for generating test data
+                //println!("{} -> {} {}", fields[0].unwrap_or(" "), &ctx.book, &cv);
+                references.insert(ctx.book, cv);
             }
             None => {
-                println!(
-                    "WARN: {} missing context for {:?}",
-                    error_context, fields[0]
-                )
+                warnings.push(format!("missing context for '{}'", fields[0].unwrap_or("")));
             }
         }
     }
 
-    references
+    (references, warnings)
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -453,6 +455,7 @@ impl Display for ChaptersVerses {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct References(HashMap<&'static str, ChaptersVerses>);
 
 impl References {

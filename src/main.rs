@@ -14,7 +14,12 @@ fn main() -> ExitCode {
     let mut posts = posts::Posts::new();
 
     if let Err(e) = hugo::walk_posts(|metadata, body| {
-        let refs = bible::get_references(&metadata.url, body);
+        let (refs, warnings) = bible::get_references(body);
+
+        for w in warnings {
+            println!("WARN: {}: {}", &metadata.url, &w);
+        }
+
         posts.insert(metadata, refs);
     }) {
         println!("failed: {:?}", e);
