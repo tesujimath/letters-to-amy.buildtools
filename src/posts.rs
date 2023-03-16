@@ -104,8 +104,13 @@ impl Posts {
         f.write_all(format!("---\ntitle: \"{}\"\n---\n\n| | |\n| --- | --- |\n", book).as_bytes());
 
         for r in refs {
+            let m = &self.metadata[r.post_index];
             f.write_all(
-                format!("| {} | {} |\n", self.metadata[r.post_index].header.title, r).as_bytes(),
+                format!(
+                    "| [{}]({{{{<ref \"/post/{}\" >}}}}) | {} |\n",
+                    &m.header.title, &m.url, r
+                )
+                .as_bytes(),
             );
         }
 
