@@ -4,15 +4,19 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::{
     cmp::{self, Ordering},
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt::{self, Display, Formatter},
     num::ParseIntError,
     str::FromStr,
 };
 
+pub fn books() -> impl Iterator<Item = &'static str> {
+    book_alias_data().iter().map(|aliases| aliases[0])
+}
+
 fn book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     lazy_static! {
-        static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_aliases()
+        static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_alias_data()
             .iter()
             .flat_map(|aliases| {
                 aliases
@@ -37,9 +41,18 @@ fn book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     }
 }
 
+fn is_single_chapter_book(book: &str) -> bool {
+    lazy_static! {
+        static ref SINGLE_CHAPTER_BOOK_SET: HashSet<&'static str> =
+            single_chapter_book_data().iter().map(|s| *s).collect();
+    }
+
+    SINGLE_CHAPTER_BOOK_SET.contains(book)
+}
+
 pub fn abbrev(name: &str) -> Option<&'static str> {
     lazy_static! {
-        static ref ABBREV_MAP: HashMap<&'static str, &'static str> = book_aliases()
+        static ref ABBREV_MAP: HashMap<&'static str, &'static str> = book_alias_data()
             .iter()
             .map(|aliases| (aliases[0], aliases[1]))
             .collect();
@@ -99,10 +112,11 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
         let book = book(fields[4], fields[5]);
         let chapter_str = fields[6];
         if let Some(book) = book {
-            chapter_context = Some(ChapterContext {
-                book,
-                chapter: chapter_str.map(|s| s.parse::<Chapter>().unwrap()),
-            })
+            let chapter = chapter_str.map(|s| s.parse::<Chapter>().unwrap());
+
+            if chapter != None || is_single_chapter_book(book) {
+                chapter_context = Some(ChapterContext { book, chapter });
+            }
         }
 
         let vspans = match (fields[2], fields[8]) {
@@ -520,7 +534,7 @@ impl IntoIterator for References {
     }
 }
 
-fn book_aliases() -> &'static Vec<Vec<&'static str>> {
+fn book_alias_data() -> &'static Vec<Vec<&'static str>> {
     lazy_static! {
         static ref BOOK_LIST: Vec<Vec<&'static str>> = vec![
             vec!["Genesis", "Gen"],
@@ -595,8 +609,13 @@ fn book_aliases() -> &'static Vec<Vec<&'static str>> {
     &BOOK_LIST
 }
 
-pub fn books() -> impl Iterator<Item = &'static str> {
-    book_aliases().iter().map(|aliases| aliases[0])
+fn single_chapter_book_data() -> &'static Vec<&'static str> {
+    lazy_static! {
+        static ref BOOKS: Vec<&'static str> =
+            vec!["Obadiah", "Philemon", "2 John", "3 John", "Jude",];
+    }
+
+    &BOOKS
 }
 
 mod tests;
