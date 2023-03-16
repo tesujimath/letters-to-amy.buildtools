@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{self, File};
 use std::{path::PathBuf, process::ExitCode};
 
 use clap::Parser;
@@ -21,11 +21,12 @@ fn main() -> ExitCode {
     }
 
     if let Some(root) = hugo::content_root() {
-        let dir = root.join("page").join("scripture-index");
-        let mut header = File::open(dir.join("header.yaml")).unwrap();
-        let mut outfile = File::create(dir.join("index.md")).unwrap();
+        let page_dir = root.join("page").join("index");
+        let mut page_header = fs::read_to_string(page_dir.join("page-header.yaml")).unwrap();
+        let mut outfile = File::create(page_dir.join("index.md")).unwrap();
+        let index_dir = root.join("index");
 
-        posts.dump(header, outfile);
+        posts.dump(&page_header, outfile, &index_dir);
     }
 
     ExitCode::SUCCESS

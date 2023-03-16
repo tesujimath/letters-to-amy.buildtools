@@ -1,11 +1,15 @@
 // TODO remove suppression for dead code warning
 #![allow(dead_code)] //, unused_variables)]
 
+use itertools::Itertools;
+
 use super::bible::{ChaptersVerses, References};
 use super::hugo::Metadata;
 use super::util::insert_in_order;
 use std::collections::hash_map;
-use std::io::{Read, Write};
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
 use std::{
     cmp::Ordering,
     collections::HashMap,
@@ -86,23 +90,56 @@ impl Posts {
         }
     }
 
-    pub fn dump(&self, mut header: impl Read, mut outfile: impl Write) {
-        let mut buffer = Vec::new();
-        header.read_to_end(&mut buffer).unwrap();
-        outfile.write_all("---\n".as_bytes());
-        outfile.write_all(&buffer);
-        outfile.write_all("---\n".as_bytes());
+    fn write_book_refs(
+        &self,
+        index_dir: &PathBuf,
+        book: &str,
+        refs: &Vec<PostReferences>,
+    ) -> anyhow::Result<String> {
+        let slug = slug::slugify(book);
+        let path = index_dir.join(format!("{}.md", slug));
 
+        let mut f = File::create(path).unwrap();
+        f.write_all(format!("---\ntitle: \"{}\"\n---\n\n| | |\n| --- | --- |\n", book).as_bytes());
+
+        for r in refs {
+            f.write_all(
+                format!("| {} | {} |\n", self.metadata[r.post_index].header.title, r).as_bytes(),
+            );
+        }
+
+        let abbrev = super::bible::abbrev(book).unwrap_or(book);
+        let href = format!("[{}]({{{{<ref \"/index/{}\" >}}}})", abbrev, slug);
+
+        Ok(href)
+    }
+
+    pub fn dump(&self, page_header: &str, mut outfile: impl Write, index_dir: &PathBuf) {
+        outfile.write_all(format!("---\n{}---\n", page_header).as_bytes());
+
+        let mut hrefs = Vec::new();
         for book in super::bible::books() {
             if let Some(refs) = self.refs_by_book.get(book) {
-                outfile.write_all(format!("\n# {}\n\n| | |\n| --- | --- |\n", book).as_bytes());
-                for r in refs {
-                    outfile.write_all(
-                        format!("| {} | {} |\n", self.metadata[r.post_index].header.title, r)
-                            .as_bytes(),
-                    );
-                }
+                let href = self.write_book_refs(index_dir, book, refs).unwrap();
+                hrefs.push(href);
             }
+        }
+
+        const row_size: usize = 4;
+        for i in 0..row_size {
+            outfile.write_all("| ".as_bytes());
+        }
+        outfile.write_all("|\n".as_bytes());
+        for i in 0..row_size {
+            outfile.write_all("| --- ".as_bytes());
+        }
+        outfile.write_all("|\n".as_bytes());
+
+        for href_batch in &hrefs.into_iter().chunks(row_size) {
+            for href in href_batch {
+                outfile.write_all(format!("| {} ", href).as_bytes());
+            }
+            outfile.write_all("|\n".as_bytes());
         }
     }
 }
