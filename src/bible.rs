@@ -87,7 +87,7 @@ struct ChapterContext<'a> {
     chapter: Option<Chapter>,
 }
 
-pub fn get_references(text: &str) -> (References, Vec<String>) {
+pub fn references(text: &str) -> (References, Vec<String>) {
     lazy_static! {
         // 1. book chapter, which we use for later context
         // 2. book chapter:verses, which we extract, and store the context
@@ -121,8 +121,8 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
 
         let vspans = match (fields[2], fields[8]) {
             (Some(_), Some(_)) => panic!("not possible to have both verse alternatives"),
-            (Some(v), None) => get_verses(v),
-            (None, Some(v)) => get_verses(v),
+            (Some(v), None) => verses(v),
+            (None, Some(v)) => verses(v),
             (None, None) => VSpans::new(),
         };
 
@@ -302,7 +302,7 @@ impl VSpans {
     }
 
     /// determine leftmost item from i-1 and i
-    fn get_leftmost_touching(&self, i: usize, item: &VSpan) -> Option<usize> {
+    fn leftmost_touching(&self, i: usize, item: &VSpan) -> Option<usize> {
         let touching_left = i > 0 && self.0[i - 1].touches(item);
         let touching_this = i < self.0.len() && self.0[i].touches(item);
 
@@ -320,7 +320,7 @@ impl VSpans {
                 assert!(item == self.0[i]);
             }
             Err(i) => {
-                match self.get_leftmost_touching(i, &item) {
+                match self.leftmost_touching(i, &item) {
                     None => self.0.insert(i, item),
                     Some(j) => {
                         self.0[j].merge(item);
@@ -388,7 +388,7 @@ impl fmt::Display for VSpans {
 }
 
 /// get verses from the text, and return in order
-fn get_verses(text: &str) -> VSpans {
+fn verses(text: &str) -> VSpans {
     fn vspan_from_str(s: &str) -> Option<VSpan> {
         VSpan::from_str(s).ok()
     }

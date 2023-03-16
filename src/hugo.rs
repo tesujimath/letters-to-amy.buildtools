@@ -65,7 +65,7 @@ where
 
     match (
         relpath.to_str(),
-        get_header_and_body(&content).context("failed to get title and body"),
+        header_and_body(&content).context("failed to get title and body"),
     ) {
         (Some(relpath), Ok((header, body))) => {
             let metadata = Metadata::new(relpath, header);
@@ -143,7 +143,7 @@ impl fmt::Display for GetHeaderAndBodyErr {
     }
 }
 
-fn get_header_and_body(text: &str) -> Result<(Header, &str), GetHeaderAndBodyErr> {
+fn header_and_body(text: &str) -> Result<(Header, &str), GetHeaderAndBodyErr> {
     lazy_static! {
         static ref HEADER_RE: Regex = Regex::new(r"(?s)\+\+\+(.*)(\+\+\+)").unwrap();
     }

@@ -3,14 +3,11 @@
 use super::*;
 
 #[test]
-fn test_get_header_and_body() {
-    assert_eq!(
-        get_header_and_body("abc"),
-        Err(GetHeaderAndBodyErr::NoHeader)
-    );
+fn test_header_and_body() {
+    assert_eq!(header_and_body("abc"), Err(GetHeaderAndBodyErr::NoHeader));
 
     assert_eq!(
-        get_header_and_body(
+        header_and_body(
             r###"
     +++
     title = "My Title"
@@ -30,7 +27,7 @@ fn test_get_header_and_body() {
         ))
     );
     /*
-        let (h, b) = get_header_and_body(
+        let (h, b) = header_and_body(
             r###"+++
     title: some title
     date: 2023-02-07

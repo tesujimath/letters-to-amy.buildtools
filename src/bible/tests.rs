@@ -139,75 +139,75 @@ fn test_vspans_merge() {
 }
 
 #[test]
-fn test_get_verses() {
+fn test_verses() {
     assert_eq!(
-        get_verses("4, 9, 2, 1-7"),
+        verses("4, 9, 2, 1-7"),
         VSpans(vec![vspan("1-7"), vspan("9")])
     );
 }
 
 #[test]
-fn test_get_verses_with_letter_suffix() {
-    assert_eq!(get_verses("4b, 9a"), VSpans(vec![vspan("4"), vspan("9")]));
+fn test_verses_with_letter_suffix() {
+    assert_eq!(verses("4b, 9a"), VSpans(vec![vspan("4"), vspan("9")]));
 }
 
 #[test]
 fn test_chapters_verses_insert() {
     let mut cv = ChaptersVerses::new(ChapterVerses {
         chapter: Some(Chapter(1)),
-        verses: get_verses("1-3"),
+        verses: verses("1-3"),
     });
 
     cv.insert(ChapterVerses {
         chapter: Some(Chapter(2)),
-        verses: get_verses("4"),
+        verses: verses("4"),
     });
     assert_eq!(
         cv,
         ChaptersVerses(vec![
             ChapterVerses {
                 chapter: Some(Chapter(1)),
-                verses: get_verses("1-3"),
+                verses: verses("1-3"),
             },
             ChapterVerses {
                 chapter: Some(Chapter(2)),
-                verses: get_verses("4"),
+                verses: verses("4"),
             }
         ])
     );
 
     cv.insert(ChapterVerses {
         chapter: Some(Chapter(1)),
-        verses: get_verses("4"),
+        verses: verses("4"),
     });
     assert_eq!(
         cv,
         ChaptersVerses(vec![
             ChapterVerses {
                 chapter: Some(Chapter(1)),
-                verses: get_verses("1-4"),
+                verses: verses("1-4"),
             },
             ChapterVerses {
                 chapter: Some(Chapter(2)),
-                verses: get_verses("4"),
+                verses: verses("4"),
             }
         ])
     );
 
     cv.insert(ChapterVerses {
         chapter: Some(Chapter(2)),
-        verses: get_verses("6"),
+        verses: verses("6"),
     });
     assert_eq!(
         cv,
         ChaptersVerses(vec![
             ChapterVerses {
                 chapter: Some(Chapter(1)),
-                verses: get_verses("1-4"),
+                verses: verses("1-4"),
             },
             ChapterVerses {
                 chapter: Some(Chapter(2)),
-                verses: get_verses("4, 6"),
+                verses: verses("4, 6"),
             }
         ])
     );
@@ -578,8 +578,8 @@ fn test_chapters_verses_insert() {
 // ("v8", "Psalms 27:8"),
 // ("v9, 10", "Psalms 46:9-10"),
 // ("v9,", "Psalms 27:9"),
-fn test_get_references(src: &str, expected: &str) {
-    let (refs, warnings) = get_references(src);
+fn test_references(src: &str, expected: &str) {
+    let (refs, warnings) = references(src);
     assert!(warnings.is_empty(), "{}", src);
     assert!(refs.0.len() == 1, "{}", src);
     let book = *(refs.0.keys().next().unwrap());
