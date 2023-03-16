@@ -71,7 +71,7 @@ impl Display for Chapter {
 #[derive(Clone, Copy, Debug)]
 struct ChapterContext<'a> {
     book: &'a str,
-    chapter: Chapter,
+    chapter: Option<Chapter>,
 }
 
 pub fn get_references(text: &str) -> (References, Vec<String>) {
@@ -82,7 +82,7 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
         // 4. book verse
         static ref REFERENCE_RE: Regex =
             //           (bare verse          )(  prefix     book                  chapter verses)
-            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)(:(\d[ab\d:,\s-]*))?)").unwrap();
+            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)?\s*([:v](\d[abv\d:,\s-]*))?)").unwrap();
     }
 
     let mut references = References::new();
@@ -98,10 +98,10 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
 
         let book = book(fields[4], fields[5]);
         let chapter_str = fields[6];
-        if let (Some(book), Some(chapter_str)) = (book, chapter_str) {
+        if let Some(book) = book {
             chapter_context = Some(ChapterContext {
                 book,
-                chapter: chapter_str.parse::<Chapter>().unwrap(),
+                chapter: chapter_str.map(|s| s.parse::<Chapter>().unwrap()),
             })
         }
 
@@ -114,16 +114,18 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
 
         match chapter_context {
             Some(ctx) => {
-                let cv = ChapterVerses::new(ctx.chapter, vspans);
-                // useful for generating test data
-                // println!(
-                //     "{} -> {} {}: {:?}",
-                //     fields[0].unwrap_or(" "),
-                //     &ctx.book,
-                //     &cv,
-                //     &fields
-                // );
-                references.insert(ctx.book, cv);
+                if ctx.chapter != None || !vspans.is_empty() {
+                    let cv = ChapterVerses::new(ctx.chapter, vspans);
+                    // useful for generating test data
+                    // println!(
+                    //     "{} -> {} {}: {:?}",
+                    //     fields[0].unwrap_or(" "),
+                    //     &ctx.book,
+                    //     &cv,
+                    //     &fields
+                    // );
+                    references.insert(ctx.book, cv);
+                }
             }
             None => {
                 warnings.push(format!("missing context for '{}'", fields[0].unwrap_or("")));
@@ -382,12 +384,12 @@ fn get_verses(text: &str) -> VSpans {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct ChapterVerses {
-    chapter: Chapter,
+    chapter: Option<Chapter>,
     verses: VSpans,
 }
 
 impl ChapterVerses {
-    fn new(chapter: Chapter, verses: VSpans) -> Self {
+    fn new(chapter: Option<Chapter>, verses: VSpans) -> Self {
         Self { chapter, verses }
     }
 }
@@ -413,10 +415,22 @@ impl Ord for ChapterVerses {
 
 impl Display for ChapterVerses {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        if self.verses.is_empty() {
-            write!(f, "{}", self.chapter)
-        } else {
-            write!(f, "{}:{}", self.chapter, self.verses)
+        match self.chapter {
+            Some(chapter) => {
+                if self.verses.is_empty() {
+                    write!(f, "{}", chapter)
+                } else {
+                    write!(f, "{}:{}", chapter, self.verses)
+                }
+            }
+            None => {
+                if self.verses.is_empty() {
+                    println!("WARNING: no chapter or verses for ChapterVerses::fmt");
+                    Ok(())
+                } else {
+                    write!(f, "v{}", self.verses)
+                }
+            }
         }
     }
 }
