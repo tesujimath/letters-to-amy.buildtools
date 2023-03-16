@@ -74,13 +74,15 @@ struct ChapterContext<'a> {
     chapter: Chapter,
 }
 
-pub fn get_references(text: &str) -> References {
+pub fn get_references(error_context: &str, text: &str) -> References {
     lazy_static! {
         // 1. book chapter, which we use for later context
         // 2. book chapter:verses, which we extract, and store the context
-        // 3. verse, which we extract using the stored context
+        // 3. bare verse, which we extract using the stored context
+        // 4. book verse
         static ref REFERENCE_RE: Regex =
-            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d+)(:([\d:,\s-]+)[ab]?)?)").unwrap();
+            //           (bare verse          )(  prefix     book                  chapter verses)
+            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)(:([\d:,\s-]+)[ab]?)?)").unwrap();
     }
 
     let mut references = References::new();
@@ -89,12 +91,11 @@ pub fn get_references(text: &str) -> References {
     for cap in REFERENCE_RE.captures_iter(text) {
         let fields = cap
             .iter()
-            .skip(1)
             .map(|m_o| m_o.map(|m| m.as_str()))
             .collect::<Vec<Option<&str>>>();
 
-        let book = book(fields[3], fields[4]);
-        let chapter_str = fields[5];
+        let book = book(fields[4], fields[5]);
+        let chapter_str = fields[6];
         if let (Some(book), Some(chapter_str)) = (book, chapter_str) {
             chapter_context = Some(ChapterContext {
                 book,
@@ -102,7 +103,7 @@ pub fn get_references(text: &str) -> References {
             })
         }
 
-        let vspans = match (fields[1], fields[7]) {
+        let vspans = match (fields[2], fields[8]) {
             (Some(_), Some(_)) => panic!("not possible to have both verse alternatives"),
             (Some(v), None) => get_verses(v),
             (None, Some(v)) => get_verses(v),
@@ -114,7 +115,10 @@ pub fn get_references(text: &str) -> References {
                 references.insert(ctx.book, ChapterVerses::new(ctx.chapter, vspans));
             }
             None => {
-                println!("WARN: missing context for {}", vspans)
+                println!(
+                    "WARN: {} missing context for {:?}",
+                    error_context, fields[0]
+                )
             }
         }
     }

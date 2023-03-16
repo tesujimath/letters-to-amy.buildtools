@@ -66,16 +66,10 @@ impl Posts {
     }
 
     pub fn insert(&mut self, metadata: Metadata, refs: References) {
-        println!(
-            "-------------------- {} '{}'",
-            &metadata.url, &metadata.header.title
-        );
-
         self.metadata.push(metadata);
         let post_index = self.metadata.len() - 1;
 
         for (book, cvs) in refs.into_iter() {
-            println!("{} {}", book, &cvs);
             let post_refs = PostReferences::new(post_index, cvs);
 
             use hash_map::Entry::*;
