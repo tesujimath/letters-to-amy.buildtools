@@ -24,7 +24,7 @@ fn main() -> ExitCode {
         let page_dir = root.join("page").join("scripture-index");
         let mut page_header = fs::read_to_string(page_dir.join("page-header.yaml")).unwrap();
         let mut outfile = File::create(page_dir.join("index.md")).unwrap();
-        let section_name = "index";
+        let section_name = "ref";
         let section_dir = root.join(section_name);
 
         fs::create_dir_all(&section_dir).unwrap();
