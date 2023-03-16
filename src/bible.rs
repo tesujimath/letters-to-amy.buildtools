@@ -548,7 +548,7 @@ fn book_aliases() -> &'static Vec<Vec<&'static str>> {
             vec!["1 Timothy", "1 Tim"],
             vec!["2 Timothy", "2 Tim"],
             vec!["Titus", "Ti"],
-            vec!["Philemon", "Phil"],
+            vec!["Philemon", "Phm"],
             vec!["Hebrews", "Heb"],
             vec!["James", "Jam"],
             vec!["1 Peter", "1 Pet"],
