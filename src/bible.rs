@@ -82,7 +82,7 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
         // 4. book verse
         static ref REFERENCE_RE: Regex =
             //           (bare verse          )(  prefix     book                  chapter verses)
-            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)(:(\d[\d:,\s-]*)[ab]?)?)").unwrap();
+            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)(:(\d[ab\d:,\s-]*))?)").unwrap();
     }
 
     let mut references = References::new();
@@ -116,7 +116,13 @@ pub fn get_references(text: &str) -> (References, Vec<String>) {
             Some(ctx) => {
                 let cv = ChapterVerses::new(ctx.chapter, vspans);
                 // useful for generating test data
-                //println!("{} -> {} {}", fields[0].unwrap_or(" "), &ctx.book, &cv);
+                // println!(
+                //     "{} -> {} {}: {:?}",
+                //     fields[0].unwrap_or(" "),
+                //     &ctx.book,
+                //     &cv,
+                //     &fields
+                // );
                 references.insert(ctx.book, cv);
             }
             None => {
@@ -234,12 +240,20 @@ impl fmt::Display for VSpan {
     }
 }
 
+/// trim whitespace and trailing a, b suffix
+fn sanitize_verse(s: &str) -> &str {
+    s.trim().trim_end_matches(|c| c == 'a' || c == 'b')
+}
+
 impl FromStr for VSpan {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split_once('-') {
-            Some((s1, s2)) => match (s1.trim().parse::<VInt>(), s2.trim().parse::<VInt>()) {
+            Some((s1, s2)) => match (
+                sanitize_verse(s1).parse::<VInt>(),
+                sanitize_verse(s2).parse::<VInt>(),
+            ) {
                 (Ok(v1), Ok(v2)) => Ok(VSpan::between(v1, v2)),
                 (Err(e1), Err(e2)) => Err(ParseError(format!(
                     "Verses::from_str error: {}, {}",
@@ -248,7 +262,7 @@ impl FromStr for VSpan {
                 (Err(e1), _) => Err(ParseError::new(e1)),
                 (_, Err(e2)) => Err(ParseError::new(e2)),
             },
-            None => match s.trim().parse::<VInt>() {
+            None => match sanitize_verse(s).parse::<VInt>() {
                 Ok(v) => Ok(VSpan::at(v)),
                 Err(e) => Err(ParseError::new(e)),
             },

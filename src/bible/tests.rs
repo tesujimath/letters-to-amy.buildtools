@@ -147,6 +147,11 @@ fn test_get_verses() {
 }
 
 #[test]
+fn test_get_verses_with_letter_suffix() {
+    assert_eq!(get_verses("4b, 9a"), VSpans(vec![vspan("4"), vspan("9")]));
+}
+
+#[test]
 fn test_chapters_verses_insert() {
     let mut cv = ChaptersVerses::new(ChapterVerses {
         chapter: Chapter(1),
@@ -526,7 +531,7 @@ fn test_chapters_verses_insert() {
 #[test_case(" Romans 8:18-27,", "Romans 8:18-27")]
 #[test_case("Romans 8:22-25", "Romans 8:22-25")]
 #[test_case("Romans 8:26", "Romans 8:26")]
-#[test_case(" Romans 8:28 a", "Romans 8:28")]
+#[test_case(" Romans 8:28a", "Romans 8:28")]
 #[test_case("Romans 8:28", "Romans 8:28")]
 #[test_case("Romans 8:32", "Romans 8:32")]
 #[test_case("Romans 8:33-34a", "Romans 8:33-34")]
