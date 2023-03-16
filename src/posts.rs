@@ -90,6 +90,9 @@ impl Posts {
         }
     }
 
+    const AUTOGEN_WARNING_YAML: &str = "# THIS FILE IS AUTO-GENERATED, DO NOT EDIT\n";
+    const BOOK_REFS_DESCRIPTION: &str = "Scripture index";
+
     fn write_book_refs(
         &self,
         section_dir: &PathBuf,
@@ -101,7 +104,15 @@ impl Posts {
         let path = section_dir.join(format!("{}.md", slug));
 
         let mut f = File::create(path).unwrap();
-        f.write_all(format!("---\ntitle: \"{}\"\n---\n\n| | |\n| --- | --- |\n", book).as_bytes());
+        f.write_all(
+            format!(
+                "---\n{}title: \"{}\"\ndescription: \"{}\"\n---\n\n| | |\n| --- | --- |\n",
+                Self::AUTOGEN_WARNING_YAML,
+                book,
+                Self::BOOK_REFS_DESCRIPTION
+            )
+            .as_bytes(),
+        );
 
         for r in refs {
             let m = &self.metadata[r.post_index];
@@ -130,7 +141,9 @@ impl Posts {
         section_dir: &PathBuf,
         section_name: &str,
     ) {
-        outfile.write_all(format!("---\n{}---\n", page_header).as_bytes());
+        outfile.write_all(
+            format!("---\n{}{}---\n", Self::AUTOGEN_WARNING_YAML, page_header).as_bytes(),
+        );
 
         let mut hrefs = Vec::new();
         for book in super::bible::books() {
