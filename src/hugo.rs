@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use std::fmt;
-use std::fs::File;
+use std::fs::{DirEntry, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -95,11 +95,14 @@ where
         }
         Err(_) => {
             // no page bundle, so walk further
-            for entry in (dir
+            let mut entries = (dir
                 .read_dir()
                 .context(format!("read_dir(\"{}\")", dir.to_string_lossy()))?)
             .flatten()
-            {
+            // sort by name, to provide a defined order of iteration
+            .collect::<Vec<DirEntry>>();
+            entries.sort_by_key(|e| e.file_name());
+            for entry in entries {
                 let file_type = entry.file_type()?;
                 if file_type.is_dir() {
                     walk(root, &entry.path(), handler)?;
