@@ -10,14 +10,21 @@ use std::{
     str::FromStr,
 };
 
-pub fn books() -> impl Iterator<Item = &'static str> {
-    book_alias_data().iter().map(|aliases| aliases[0])
+pub fn all_books() -> impl Iterator<Item = &'static str> {
+    book_alias_iter().map(|aliases| aliases[0])
+}
+
+pub fn ot_books() -> impl Iterator<Item = &'static str> {
+    ot_book_alias_iter().map(|aliases| aliases[0])
+}
+
+pub fn nt_books() -> impl Iterator<Item = &'static str> {
+    nt_book_alias_iter().map(|aliases| aliases[0])
 }
 
 fn book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
     lazy_static! {
-        static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_alias_data()
-            .iter()
+        static ref CANONICAL_MAP: HashMap<&'static str, &'static str> = book_alias_iter()
             .flat_map(|aliases| {
                 aliases
                     .iter()
@@ -52,8 +59,7 @@ fn is_single_chapter_book(book: &str) -> bool {
 
 pub fn abbrev(name: &str) -> Option<&'static str> {
     lazy_static! {
-        static ref ABBREV_MAP: HashMap<&'static str, &'static str> = book_alias_data()
-            .iter()
+        static ref ABBREV_MAP: HashMap<&'static str, &'static str> = book_alias_iter()
             .map(|aliases| (aliases[0], aliases[1]))
             .collect();
     }
@@ -536,7 +542,19 @@ impl IntoIterator for References {
     }
 }
 
-fn book_alias_data() -> &'static Vec<Vec<&'static str>> {
+fn book_alias_iter() -> impl Iterator<Item = &'static Vec<&'static str>> {
+    ot_book_alias_iter().chain(nt_book_alias_iter())
+}
+
+fn ot_book_alias_iter() -> impl Iterator<Item = &'static Vec<&'static str>> {
+    ot_book_alias_data().iter()
+}
+
+fn nt_book_alias_iter() -> impl Iterator<Item = &'static Vec<&'static str>> {
+    nt_book_alias_data().iter()
+}
+
+fn ot_book_alias_data() -> &'static Vec<Vec<&'static str>> {
     lazy_static! {
         static ref BOOK_LIST: Vec<Vec<&'static str>> = vec![
             vec!["Genesis", "Gen"],
@@ -578,6 +596,15 @@ fn book_alias_data() -> &'static Vec<Vec<&'static str>> {
             vec!["Haggai", "Hag"],
             vec!["Zechariah", "Zech"],
             vec!["Malachi", "Mal"],
+        ];
+    }
+
+    &BOOK_LIST
+}
+
+fn nt_book_alias_data() -> &'static Vec<Vec<&'static str>> {
+    lazy_static! {
+        static ref BOOK_LIST: Vec<Vec<&'static str>> = vec![
             vec!["Matthew", "Mt"],
             vec!["Mark", "Mk"],
             vec!["Luke", "Lk"],

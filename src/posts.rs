@@ -128,19 +128,14 @@ impl Posts {
         Ok(href)
     }
 
-    pub fn dump(
+    fn write_refs(
         &self,
-        page_header: &str,
-        mut outfile: impl Write,
+        book_name_iter: impl Iterator<Item = &'static str>,
         section_dir: &PathBuf,
         section_name: &str,
+        hrefs: &mut Vec<String>,
     ) {
-        outfile.write_all(
-            format!("---\n{}{}---\n", Self::AUTOGEN_WARNING_YAML, page_header).as_bytes(),
-        );
-
-        let mut hrefs = Vec::new();
-        for book in super::bible::books() {
+        for book in book_name_iter {
             if let Some(refs) = self.refs_by_book.get(book) {
                 let href = self
                     .write_book_refs(section_dir, section_name, book, refs)
@@ -148,6 +143,10 @@ impl Posts {
                 hrefs.push(href);
             }
         }
+    }
+
+    fn write_table(&self, mut outfile: impl Write, heading: &str, hrefs: &Vec<String>) {
+        outfile.write_all(format!("\n**{}**\n", heading).as_bytes());
 
         const row_size: usize = 4;
         for i in 0..row_size {
@@ -165,5 +164,36 @@ impl Posts {
             }
             outfile.write_all("|\n".as_bytes());
         }
+    }
+
+    pub fn dump(
+        &self,
+        page_header: &str,
+        mut outfile: impl Write,
+        section_dir: &PathBuf,
+        section_name: &str,
+    ) {
+        outfile.write_all(
+            format!("---\n{}{}---\n", Self::AUTOGEN_WARNING_YAML, page_header).as_bytes(),
+        );
+
+        let mut ot_hrefs = Vec::new();
+        let mut nt_hrefs = Vec::new();
+
+        self.write_refs(
+            super::bible::ot_books(),
+            section_dir,
+            section_name,
+            &mut ot_hrefs,
+        );
+        self.write_table(&mut outfile, "Old Testament", &ot_hrefs);
+
+        self.write_refs(
+            super::bible::nt_books(),
+            section_dir,
+            section_name,
+            &mut nt_hrefs,
+        );
+        self.write_table(&mut outfile, "New Testament", &nt_hrefs);
     }
 }
