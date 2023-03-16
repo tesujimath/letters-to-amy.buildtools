@@ -92,12 +92,13 @@ impl Posts {
 
     fn write_book_refs(
         &self,
-        index_dir: &PathBuf,
+        section_dir: &PathBuf,
+        section_name: &str,
         book: &str,
         refs: &Vec<PostReferences>,
     ) -> anyhow::Result<String> {
         let slug = slug::slugify(book);
-        let path = index_dir.join(format!("{}.md", slug));
+        let path = section_dir.join(format!("{}.md", slug));
 
         let mut f = File::create(path).unwrap();
         f.write_all(format!("---\ntitle: \"{}\"\n---\n\n| | |\n| --- | --- |\n", book).as_bytes());
@@ -109,18 +110,29 @@ impl Posts {
         }
 
         let abbrev = super::bible::abbrev(book).unwrap_or(book);
-        let href = format!("[{}]({{{{<ref \"/scripture-index/{}\" >}}}})", abbrev, slug);
+        let href = format!(
+            "[{}]({{{{<ref \"/{}/{}\" >}}}})",
+            abbrev, section_name, slug
+        );
 
         Ok(href)
     }
 
-    pub fn dump(&self, page_header: &str, mut outfile: impl Write, index_section_dir: &PathBuf) {
+    pub fn dump(
+        &self,
+        page_header: &str,
+        mut outfile: impl Write,
+        section_dir: &PathBuf,
+        section_name: &str,
+    ) {
         outfile.write_all(format!("---\n{}---\n", page_header).as_bytes());
 
         let mut hrefs = Vec::new();
         for book in super::bible::books() {
             if let Some(refs) = self.refs_by_book.get(book) {
-                let href = self.write_book_refs(index_section_dir, book, refs).unwrap();
+                let href = self
+                    .write_book_refs(section_dir, section_name, book, refs)
+                    .unwrap();
                 hrefs.push(href);
             }
         }
