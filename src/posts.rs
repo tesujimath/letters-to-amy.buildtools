@@ -112,7 +112,7 @@ impl Posts {
             let m = &self.metadata[r.post_index];
             f.write_all(
                 format!(
-                    "| [{}]({{{{<ref \"/post/{}\" >}}}}) | {} |\n",
+                    "| [{}]({{{{<ref \"{}\" >}}}}) | {} |\n",
                     &m.header.title, &m.url, r
                 )
                 .as_bytes(),

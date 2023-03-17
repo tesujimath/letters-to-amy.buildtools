@@ -19,11 +19,8 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    fn new(url: &str, header: Header) -> Self {
-        Metadata {
-            url: url.to_owned(),
-            header,
-        }
+    fn new(url: String, header: Header) -> Self {
+        Metadata { url, header }
     }
 }
 
@@ -48,7 +45,7 @@ where
 {
     if let Some(root) = content_root() {
         let posts_path = root.join("post");
-        walk(&posts_path, &posts_path, &mut handler)
+        walk(&root, &posts_path, &mut handler)
     } else {
         // TODO not really OK
         Ok(())
@@ -68,7 +65,7 @@ where
         header_and_body(&content).context("failed to get title and body"),
     ) {
         (Some(relpath), Ok((header, body))) => {
-            let metadata = Metadata::new(relpath, header);
+            let metadata = Metadata::new(format!("/{}", relpath), header);
 
             handler(metadata, body);
 
