@@ -10,10 +10,6 @@ use std::{
     str::FromStr,
 };
 
-pub fn all_books() -> impl Iterator<Item = &'static str> {
-    book_alias_iter().map(|aliases| aliases[0])
-}
-
 pub fn ot_books() -> impl Iterator<Item = &'static str> {
     ot_book_alias_iter().map(|aliases| aliases[0])
 }
@@ -517,7 +513,7 @@ impl References {
         Self(HashMap::new())
     }
 
-    pub fn get(&self, book: &'static str) -> Option<&ChaptersVerses> {
+    pub fn _get(&self, book: &'static str) -> Option<&ChaptersVerses> {
         self.0.get(book)
     }
 
@@ -531,7 +527,7 @@ impl References {
     }
 
     /// non-consuming iterator
-    pub fn iter(&self) -> std::collections::hash_map::Iter<&'static str, ChaptersVerses> {
+    pub fn _iter(&self) -> std::collections::hash_map::Iter<&'static str, ChaptersVerses> {
         self.0.iter()
     }
 }
