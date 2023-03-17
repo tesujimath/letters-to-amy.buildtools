@@ -175,17 +175,18 @@ impl ScriptureIndexWriter {
     const SECTION_NAME: &str = "ref";
 
     fn new(content_root: &Path) -> anyhow::Result<Self> {
-        let page_dir = content_root.join("page").join("scripture-index");
-        let page_header_path = page_dir.join("page-header.yaml");
-        let page_header = fs::read_to_string(&page_header_path)?;
-        let index_markdown_path = page_dir.join("index.md");
-        let index_markdown_file = File::create(index_markdown_path)?;
+        let archetypes_dir = content_root.join("..").join("archetypes");
+        let index_header_path = archetypes_dir.join(format!("{}.yaml", Self::SECTION_NAME));
+        let index_header = fs::read_to_string(&index_header_path)?;
+
         let section_dir = content_root.join(Self::SECTION_NAME);
+        let index_markdown_path = section_dir.join("_index.md");
+        let index_markdown_file = File::create(index_markdown_path)?;
 
         fs::create_dir_all(&section_dir).unwrap();
 
         Ok(ScriptureIndexWriter {
-            page_header,
+            page_header: index_header,
             section_dir,
             index_markdown_file,
         })
