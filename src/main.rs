@@ -1,6 +1,8 @@
-use std::{path::PathBuf, process::ExitCode};
+// TODO is this required? - mitigate recursion error when running tests
+#![recursion_limit = "1024"]
 
 use clap::Parser;
+use std::{path::PathBuf, process::ExitCode};
 
 #[derive(Parser)]
 struct Cli {
