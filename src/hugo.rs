@@ -197,6 +197,7 @@ impl ScriptureIndexWriter {
     fn write_book_refs(
         &mut self,
         book: &str,
+        abbrev: &str,
         refs: &Vec<PostReferences>,
         posts: &Posts,
     ) -> anyhow::Result<String> {
@@ -225,7 +226,6 @@ impl ScriptureIndexWriter {
             )?;
         }
 
-        let abbrev = super::bible::abbrev(book).unwrap_or(book);
         let href = format!(
             "[{}]({{{{<ref \"/{}/{}\" >}}}})",
             abbrev,
@@ -238,13 +238,13 @@ impl ScriptureIndexWriter {
 
     fn write_refs(
         &mut self,
-        book_name_iter: impl Iterator<Item = &'static str>,
+        book_abbrev_iter: impl Iterator<Item = (&'static str, &'static str)>,
         hrefs: &mut Vec<String>,
         posts: &Posts,
     ) -> anyhow::Result<()> {
-        for book in book_name_iter {
+        for (book, abbrev) in book_abbrev_iter {
             if let Some(refs) = posts.refs_by_book.get(book) {
-                let href = self.write_book_refs(book, refs, posts)?;
+                let href = self.write_book_refs(book, abbrev, refs, posts)?;
                 hrefs.push(href);
             }
         }
@@ -289,10 +289,10 @@ impl ScriptureIndexWriter {
         let mut ot_hrefs = Vec::new();
         let mut nt_hrefs = Vec::new();
 
-        self.write_refs(super::bible::ot_books(), &mut ot_hrefs, posts)?;
+        self.write_refs(super::bible::ot_books_with_abbrev(), &mut ot_hrefs, posts)?;
         self.write_table("Old Testament", &ot_hrefs)?;
 
-        self.write_refs(super::bible::nt_books(), &mut nt_hrefs, posts)?;
+        self.write_refs(super::bible::nt_books_with_abbrev(), &mut nt_hrefs, posts)?;
         self.write_table("New Testament", &nt_hrefs)?;
 
         Ok(())

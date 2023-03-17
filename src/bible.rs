@@ -10,12 +10,12 @@ use std::{
     str::FromStr,
 };
 
-pub fn ot_books() -> impl Iterator<Item = &'static str> {
-    ot_book_alias_iter().map(|aliases| aliases[0])
+pub fn ot_books_with_abbrev() -> impl Iterator<Item = (&'static str, &'static str)> {
+    ot_book_alias_iter().map(|aliases| (aliases[0], aliases[1]))
 }
 
-pub fn nt_books() -> impl Iterator<Item = &'static str> {
-    nt_book_alias_iter().map(|aliases| aliases[0])
+pub fn nt_books_with_abbrev() -> impl Iterator<Item = (&'static str, &'static str)> {
+    nt_book_alias_iter().map(|aliases| (aliases[0], aliases[1]))
 }
 
 fn book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
@@ -51,16 +51,6 @@ fn is_single_chapter_book(book: &str) -> bool {
     }
 
     SINGLE_CHAPTER_BOOK_SET.contains(book)
-}
-
-pub fn abbrev(name: &str) -> Option<&'static str> {
-    lazy_static! {
-        static ref ABBREV_MAP: HashMap<&'static str, &'static str> = book_alias_iter()
-            .map(|aliases| (aliases[0], aliases[1]))
-            .collect();
-    }
-
-    ABBREV_MAP.get(name).copied()
 }
 
 /// integer used for chapter index
