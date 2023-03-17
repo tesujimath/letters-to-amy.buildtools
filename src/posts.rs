@@ -30,7 +30,7 @@ impl PostReferences {
 
 impl Display for PostReferences {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}", &self.cvs)
+        write!(f, "{:#}", &self.cvs)
     }
 }
 

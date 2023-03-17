@@ -496,11 +496,15 @@ impl<'a> IntoIterator for &'a ChaptersVerses {
 
 impl Display for ChaptersVerses {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        let separator = if f.alternate() { " <br/> " } else { "; " };
         write!(
             f,
             "{}",
-            Itertools::intersperse(self.0.iter().map(|cv| cv.to_string()), "; ".to_string())
-                .collect::<String>()
+            Itertools::intersperse(
+                self.0.iter().map(|cv| cv.to_string()),
+                separator.to_string()
+            )
+            .collect::<String>()
         )
     }
 }
