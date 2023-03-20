@@ -2,6 +2,7 @@
 #![recursion_limit = "1024"]
 
 use clap::Parser;
+use scripture_index::ScriptureIndexWriter;
 use std::{path::PathBuf, process::ExitCode};
 
 #[derive(Parser)]
@@ -28,7 +29,10 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let mut sw = content.scripture_index_writer().unwrap();
+    const REF_SECTION: &str = "ref";
+
+    let cw = content.section_writer(REF_SECTION).unwrap();
+    let mut sw = ScriptureIndexWriter::new(cw);
     sw.write_posts(&posts).unwrap();
 
     ExitCode::SUCCESS
@@ -37,4 +41,5 @@ fn main() -> ExitCode {
 mod bible;
 mod hugo;
 mod posts;
+mod scripture_index;
 mod util;

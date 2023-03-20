@@ -1,6 +1,4 @@
-use super::posts::{PostReferences, Posts};
 use anyhow::{Context, Result};
-use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
@@ -18,7 +16,7 @@ pub struct Header {
 }
 
 impl Header {
-    fn new(title: &str, description: &str) -> Header {
+    pub fn new(title: &str, description: &str) -> Header {
         Header {
             title: Some(title.to_owned()),
             description: Some(description.to_owned()),
@@ -37,7 +35,7 @@ impl Metadata {
         Metadata { url, header }
     }
 
-    fn format_href(&self) -> String {
+    pub fn format_href(&self) -> String {
         format_href(
             &self.header.title.as_ref().unwrap_or(&"Unknown".to_string()),
             &self.url,
@@ -45,7 +43,7 @@ impl Metadata {
     }
 }
 
-fn format_href(text: &str, url: &str) -> String {
+pub fn format_href(text: &str, url: &str) -> String {
     format!("[{}]({{{{<ref \"{}\" >}}}})", text, url)
 }
 
@@ -143,8 +141,8 @@ impl Content {
         Ok(())
     }
 
-    pub fn scripture_index_writer(&self) -> anyhow::Result<ScriptureIndexWriter> {
-        ScriptureIndexWriter::new(&self.root)
+    pub fn section_writer(&self, section: &'static str) -> anyhow::Result<ContentWriter> {
+        ContentWriter::new(&self.root, section)
     }
 }
 
@@ -186,16 +184,16 @@ fn header_and_body(text: &str) -> Result<(Header, &str), GetHeaderAndBodyErr> {
     }
 }
 
-pub struct ContentWriter<'a> {
-    section: &'a str,
+pub struct ContentWriter {
+    section: &'static str,
     section_dir: PathBuf,
     branch_yaml_header: String,
 }
 
-impl<'a> ContentWriter<'a> {
+impl ContentWriter {
     const AUTOGEN_WARNING_YAML: &str = "# THIS FILE IS AUTO-GENERATED, DO NOT EDIT\n";
 
-    fn new(content_root: &Path, section: &'a str) -> anyhow::Result<Self> {
+    fn new(content_root: &Path, section: &'static str) -> anyhow::Result<Self> {
         let section_dir = content_root.join(section);
 
         let archetypes_dir = content_root.join("..").join("archetypes");
@@ -253,97 +251,31 @@ impl<'a> ContentWriter<'a> {
     }
 }
 
-pub struct ScriptureIndexWriter<'a> {
-    w: ContentWriter<'a>,
-}
-
-impl<'a> ScriptureIndexWriter<'a> {
-    const SECTION: &str = "ref";
-
-    fn new(content_root: &Path) -> anyhow::Result<Self> {
-        ContentWriter::new(content_root, Self::SECTION).and_then(|w| Ok(ScriptureIndexWriter { w }))
+/// write a table;  it is the callers responsibility to ensure that all rows are the same length, and match the header
+pub fn write_table(
+    mut f: impl Write,
+    header: impl IntoIterator<Item = impl fmt::Display>,
+    rows: impl IntoIterator<Item = impl IntoIterator<Item = impl fmt::Display>>,
+) -> std::io::Result<()> {
+    let mut width = 0;
+    for field in header {
+        width += 1;
+        f.write_all(format!("| {} ", field).as_bytes())?;
     }
-
-    const BOOK_REFS_DESCRIPTION: &str = "Scripture index";
-
-    fn write_book_refs(
-        &mut self,
-        book: &str,
-        abbrev: &str,
-        refs: &Vec<PostReferences>,
-        posts: &Posts,
-    ) -> anyhow::Result<String> {
-        let h = Header::new(book, Self::BOOK_REFS_DESCRIPTION);
-        self.w.create_leaf(&h).and_then(|(mut f, url)| {
-            f.write_all(format!("\n| | |\n| --- | --- |\n",).as_bytes())?;
-
-            for r in refs {
-                let m = &posts.metadata[r.post_index];
-                f.write_all(format!("| {} | {} |\n", m.format_href(), r).as_bytes())?;
-            }
-
-            f.flush()?;
-            Ok(format_href(abbrev, &url))
-        })
+    f.write_all("|\n".as_bytes())?;
+    for _ in 0..width {
+        f.write_all("| --- ".as_bytes())?;
     }
+    f.write_all("|\n".as_bytes())?;
 
-    fn write_refs(
-        &mut self,
-        book_abbrev_iter: impl Iterator<Item = (&'static str, &'static str)>,
-        hrefs: &mut Vec<String>,
-        posts: &Posts,
-    ) -> anyhow::Result<()> {
-        for (book, abbrev) in book_abbrev_iter {
-            if let Some(refs) = posts.refs_by_book.get(book) {
-                let href = self.write_book_refs(book, abbrev, refs, posts)?;
-                hrefs.push(href);
-            }
-        }
-        Ok(())
-    }
-
-    fn write_table(
-        &mut self,
-        mut f: impl Write,
-        heading: &str,
-        hrefs: &[String],
-    ) -> anyhow::Result<()> {
-        f.write_all(format!("\n**{}**\n", heading).as_bytes())?;
-
-        const ROW_SIZE: usize = 4;
-        for _ in 0..ROW_SIZE {
-            f.write_all("| ".as_bytes())?;
+    for row in rows {
+        for field in row {
+            f.write_all(format!("| {} ", field).as_bytes())?;
         }
         f.write_all("|\n".as_bytes())?;
-        for _ in 0..ROW_SIZE {
-            f.write_all("| --- ".as_bytes())?;
-        }
-        f.write_all("|\n".as_bytes())?;
-
-        for href_batch in &hrefs.iter().chunks(ROW_SIZE) {
-            for href in href_batch {
-                f.write_all(format!("| {} ", href).as_bytes())?;
-            }
-            f.write_all("|\n".as_bytes())?;
-        }
-
-        Ok(())
     }
 
-    pub fn write_posts(&mut self, posts: &super::posts::Posts) -> anyhow::Result<()> {
-        self.w.create_branch().and_then(|f| {
-            let mut ot_hrefs = Vec::new();
-            let mut nt_hrefs = Vec::new();
-
-            self.write_refs(super::bible::ot_books_with_abbrev(), &mut ot_hrefs, posts)?;
-            self.write_table(&f, "Old Testament", &ot_hrefs)?;
-
-            self.write_refs(super::bible::nt_books_with_abbrev(), &mut nt_hrefs, posts)?;
-            self.write_table(&f, "New Testament", &nt_hrefs)?;
-
-            Ok(())
-        })
-    }
+    Ok(())
 }
 
 mod tests;
