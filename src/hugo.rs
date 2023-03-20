@@ -13,7 +13,8 @@ use std::{
 
 #[derive(Deserialize, PartialEq, Eq, Debug)]
 pub struct Header {
-    pub title: String,
+    pub title: Option<String>,
+    pub description: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -177,7 +178,7 @@ impl ScriptureIndexWriter {
     fn new(content_root: &Path) -> anyhow::Result<Self> {
         let archetypes_dir = content_root.join("..").join("archetypes");
         let index_header_path = archetypes_dir.join(format!("{}.yaml", Self::SECTION_NAME));
-        let index_header = fs::read_to_string(&index_header_path)?;
+        let index_header = fs::read_to_string(index_header_path)?;
 
         let section_dir = content_root.join(Self::SECTION_NAME);
         let index_markdown_path = section_dir.join("_index.md");
@@ -221,7 +222,9 @@ impl ScriptureIndexWriter {
             f.write_all(
                 format!(
                     "| [{}]({{{{<ref \"{}\" >}}}}) | {} |\n",
-                    &m.header.title, &m.url, r
+                    &m.header.title.as_ref().unwrap_or(&"Unknown".to_string()),
+                    &m.url,
+                    r
                 )
                 .as_bytes(),
             )?;
@@ -252,7 +255,7 @@ impl ScriptureIndexWriter {
         Ok(())
     }
 
-    fn write_table(&mut self, heading: &str, hrefs: &Vec<String>) -> anyhow::Result<()> {
+    fn write_table(&mut self, heading: &str, hrefs: &[String]) -> anyhow::Result<()> {
         self.index_markdown_file
             .write_all(format!("\n**{}**\n", heading).as_bytes())?;
 
@@ -266,7 +269,7 @@ impl ScriptureIndexWriter {
         }
         self.index_markdown_file.write_all("|\n".as_bytes())?;
 
-        for href_batch in &hrefs.into_iter().chunks(ROW_SIZE) {
+        for href_batch in &hrefs.iter().chunks(ROW_SIZE) {
             for href in href_batch {
                 self.index_markdown_file
                     .write_all(format!("| {} ", href).as_bytes())?;

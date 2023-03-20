@@ -47,7 +47,7 @@ fn book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {
 fn is_single_chapter_book(book: &str) -> bool {
     lazy_static! {
         static ref SINGLE_CHAPTER_BOOK_SET: HashSet<&'static str> =
-            single_chapter_book_data().iter().map(|s| *s).collect();
+            single_chapter_book_data().iter().copied().collect();
     }
 
     SINGLE_CHAPTER_BOOK_SET.contains(book)
@@ -106,7 +106,7 @@ pub fn references(text: &str) -> (References, Vec<String>) {
         if let Some(book) = book {
             let chapter = chapter_str.map(|s| s.parse::<Chapter>().unwrap());
 
-            if chapter != None || is_single_chapter_book(book) {
+            if chapter.is_some() || is_single_chapter_book(book) {
                 chapter_context = Some(ChapterContext { book, chapter });
             }
         }
@@ -120,7 +120,7 @@ pub fn references(text: &str) -> (References, Vec<String>) {
 
         match chapter_context {
             Some(ctx) => {
-                if ctx.chapter != None || !vspans.is_empty() {
+                if ctx.chapter.is_some() || !vspans.is_empty() {
                     let cv = ChapterVerses::new(ctx.chapter, vspans);
                     // useful for generating test data
                     // println!(
@@ -422,6 +422,8 @@ impl Ord for ChapterVerses {
 }
 
 impl Display for ChapterVerses {
+    // we really do want to write out a warning to stderr here so:
+    #[allow(clippy::print_in_format_impl)]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self.chapter {
             Some(chapter) => {
@@ -433,7 +435,7 @@ impl Display for ChapterVerses {
             }
             None => {
                 if self.verses.is_empty() {
-                    println!("WARNING: no chapter or verses for ChapterVerses::fmt");
+                    eprintln!("WARNING: no chapter or verses for ChapterVerses::fmt");
                     Ok(())
                 } else {
                     write!(f, "v{}", self.verses)

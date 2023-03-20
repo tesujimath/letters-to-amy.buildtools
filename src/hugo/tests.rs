@@ -18,7 +18,8 @@ fn test_header_and_body() {
         ),
         Ok((
             Header {
-                title: "My Title".to_string()
+                title: Some("My Title".to_string()),
+                description: None,
             },
             r###"
 
