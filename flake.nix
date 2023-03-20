@@ -26,10 +26,8 @@
           {
             devShells.default = mkShell {
               nativeBuildInputs = [
-                cargo
                 cargo-flamegraph
                 cargo-nightly
-                clippy
                 gcc
                 gdb
                 rust-analyzer
