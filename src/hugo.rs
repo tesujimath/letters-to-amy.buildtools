@@ -17,6 +17,15 @@ pub struct Header {
     pub description: Option<String>,
 }
 
+impl Header {
+    fn new(title: &str, description: &str) -> Header {
+        Header {
+            title: Some(title.to_owned()),
+            description: Some(description.to_owned()),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub struct Metadata {
     pub url: String,
@@ -27,6 +36,17 @@ impl Metadata {
     fn new(url: String, header: Header) -> Self {
         Metadata { url, header }
     }
+
+    fn format_href(&self) -> String {
+        format_href(
+            &self.header.title.as_ref().unwrap_or(&"Unknown".to_string()),
+            &self.url,
+        )
+    }
+}
+
+fn format_href(text: &str, url: &str) -> String {
+    format!("[{}]({{{{<ref \"{}\" >}}}})", text, url)
 }
 
 pub struct Content {
@@ -166,34 +186,84 @@ fn header_and_body(text: &str) -> Result<(Header, &str), GetHeaderAndBodyErr> {
     }
 }
 
-pub struct ScriptureIndexWriter {
-    page_header: String,
+pub struct ContentWriter<'a> {
+    section: &'a str,
     section_dir: PathBuf,
-    index_markdown_file: File,
+    branch_yaml_header: String,
 }
 
-impl ScriptureIndexWriter {
-    const SECTION_NAME: &str = "ref";
+impl<'a> ContentWriter<'a> {
+    const AUTOGEN_WARNING_YAML: &str = "# THIS FILE IS AUTO-GENERATED, DO NOT EDIT\n";
 
-    fn new(content_root: &Path) -> anyhow::Result<Self> {
+    fn new(content_root: &Path, section: &'a str) -> anyhow::Result<Self> {
+        let section_dir = content_root.join(section);
+
         let archetypes_dir = content_root.join("..").join("archetypes");
-        let index_header_path = archetypes_dir.join(format!("{}.yaml", Self::SECTION_NAME));
-        let index_header = fs::read_to_string(index_header_path)?;
+        let branch_yaml_header_path = archetypes_dir.join(format!("{}.yaml", section));
+        let branch_yaml_header = fs::read_to_string(branch_yaml_header_path)?;
 
-        let section_dir = content_root.join(Self::SECTION_NAME);
-        let index_markdown_path = section_dir.join("_index.md");
-        let index_markdown_file = File::create(index_markdown_path)?;
+        fs::create_dir_all(&section_dir)?;
 
-        fs::create_dir_all(&section_dir).unwrap();
-
-        Ok(ScriptureIndexWriter {
-            page_header: index_header,
+        Ok(ContentWriter {
+            section,
             section_dir,
-            index_markdown_file,
+            branch_yaml_header,
         })
     }
 
-    const AUTOGEN_WARNING_YAML: &str = "# THIS FILE IS AUTO-GENERATED, DO NOT EDIT\n";
+    pub fn create_branch(&mut self) -> anyhow::Result<File> {
+        let index_path = self.section_dir.join("_index.md");
+        let mut f = File::create(index_path)?;
+
+        f.write_all(
+            format!(
+                "---\n{}{}---\n",
+                Self::AUTOGEN_WARNING_YAML,
+                self.branch_yaml_header
+            )
+            .as_bytes(),
+        )?;
+
+        Ok(f)
+    }
+
+    // TODO return URL type not String
+    pub fn create_leaf(&mut self, header: &Header) -> anyhow::Result<(File, String)> {
+        let unknown_title = "Unknown".to_string();
+        let unknown_description = "".to_string();
+        let title = header.title.as_ref().unwrap_or(&unknown_title);
+        let description = header.description.as_ref().unwrap_or(&unknown_description);
+        let slug = slug::slugify(title);
+        let path = self.section_dir.join(format!("{}.md", slug));
+        let url = format!("/{}/{}", self.section, slug);
+
+        let mut f = File::create(path).unwrap();
+        f.write_all(
+            // TODO use YAML serializer
+            format!(
+                "---\n{}title: \"{}\"\ndescription: \"{}\"\n---\n",
+                Self::AUTOGEN_WARNING_YAML,
+                title,
+                description
+            )
+            .as_bytes(),
+        )?;
+
+        Ok((f, url))
+    }
+}
+
+pub struct ScriptureIndexWriter<'a> {
+    w: ContentWriter<'a>,
+}
+
+impl<'a> ScriptureIndexWriter<'a> {
+    const SECTION: &str = "ref";
+
+    fn new(content_root: &Path) -> anyhow::Result<Self> {
+        ContentWriter::new(content_root, Self::SECTION).and_then(|w| Ok(ScriptureIndexWriter { w }))
+    }
+
     const BOOK_REFS_DESCRIPTION: &str = "Scripture index";
 
     fn write_book_refs(
@@ -203,41 +273,18 @@ impl ScriptureIndexWriter {
         refs: &Vec<PostReferences>,
         posts: &Posts,
     ) -> anyhow::Result<String> {
-        let slug = slug::slugify(book);
-        let path = self.section_dir.join(format!("{}.md", slug));
+        let h = Header::new(book, Self::BOOK_REFS_DESCRIPTION);
+        self.w.create_leaf(&h).and_then(|(mut f, url)| {
+            f.write_all(format!("\n| | |\n| --- | --- |\n",).as_bytes())?;
 
-        let mut f = File::create(path).unwrap();
-        f.write_all(
-            format!(
-                "---\n{}title: \"{}\"\ndescription: \"{}\"\n---\n\n| | |\n| --- | --- |\n",
-                Self::AUTOGEN_WARNING_YAML,
-                book,
-                Self::BOOK_REFS_DESCRIPTION
-            )
-            .as_bytes(),
-        )?;
+            for r in refs {
+                let m = &posts.metadata[r.post_index];
+                f.write_all(format!("| {} | {} |\n", m.format_href(), r).as_bytes())?;
+            }
 
-        for r in refs {
-            let m = &posts.metadata[r.post_index];
-            f.write_all(
-                format!(
-                    "| [{}]({{{{<ref \"{}\" >}}}}) | {} |\n",
-                    &m.header.title.as_ref().unwrap_or(&"Unknown".to_string()),
-                    &m.url,
-                    r
-                )
-                .as_bytes(),
-            )?;
-        }
-
-        let href = format!(
-            "[{}]({{{{<ref \"/{}/{}\" >}}}})",
-            abbrev,
-            Self::SECTION_NAME,
-            slug
-        );
-
-        Ok(href)
+            f.flush()?;
+            Ok(format_href(abbrev, &url))
+        })
     }
 
     fn write_refs(
@@ -255,51 +302,47 @@ impl ScriptureIndexWriter {
         Ok(())
     }
 
-    fn write_table(&mut self, heading: &str, hrefs: &[String]) -> anyhow::Result<()> {
-        self.index_markdown_file
-            .write_all(format!("\n**{}**\n", heading).as_bytes())?;
+    fn write_table(
+        &mut self,
+        mut f: impl Write,
+        heading: &str,
+        hrefs: &[String],
+    ) -> anyhow::Result<()> {
+        f.write_all(format!("\n**{}**\n", heading).as_bytes())?;
 
         const ROW_SIZE: usize = 4;
         for _ in 0..ROW_SIZE {
-            self.index_markdown_file.write_all("| ".as_bytes())?;
+            f.write_all("| ".as_bytes())?;
         }
-        self.index_markdown_file.write_all("|\n".as_bytes())?;
+        f.write_all("|\n".as_bytes())?;
         for _ in 0..ROW_SIZE {
-            self.index_markdown_file.write_all("| --- ".as_bytes())?;
+            f.write_all("| --- ".as_bytes())?;
         }
-        self.index_markdown_file.write_all("|\n".as_bytes())?;
+        f.write_all("|\n".as_bytes())?;
 
         for href_batch in &hrefs.iter().chunks(ROW_SIZE) {
             for href in href_batch {
-                self.index_markdown_file
-                    .write_all(format!("| {} ", href).as_bytes())?;
+                f.write_all(format!("| {} ", href).as_bytes())?;
             }
-            self.index_markdown_file.write_all("|\n".as_bytes())?;
+            f.write_all("|\n".as_bytes())?;
         }
 
         Ok(())
     }
 
     pub fn write_posts(&mut self, posts: &super::posts::Posts) -> anyhow::Result<()> {
-        self.index_markdown_file.write_all(
-            format!(
-                "---\n{}{}---\n",
-                Self::AUTOGEN_WARNING_YAML,
-                self.page_header
-            )
-            .as_bytes(),
-        )?;
+        self.w.create_branch().and_then(|f| {
+            let mut ot_hrefs = Vec::new();
+            let mut nt_hrefs = Vec::new();
 
-        let mut ot_hrefs = Vec::new();
-        let mut nt_hrefs = Vec::new();
+            self.write_refs(super::bible::ot_books_with_abbrev(), &mut ot_hrefs, posts)?;
+            self.write_table(&f, "Old Testament", &ot_hrefs)?;
 
-        self.write_refs(super::bible::ot_books_with_abbrev(), &mut ot_hrefs, posts)?;
-        self.write_table("Old Testament", &ot_hrefs)?;
+            self.write_refs(super::bible::nt_books_with_abbrev(), &mut nt_hrefs, posts)?;
+            self.write_table(&f, "New Testament", &nt_hrefs)?;
 
-        self.write_refs(super::bible::nt_books_with_abbrev(), &mut nt_hrefs, posts)?;
-        self.write_table("New Testament", &nt_hrefs)?;
-
-        Ok(())
+            Ok(())
+        })
     }
 }
 
