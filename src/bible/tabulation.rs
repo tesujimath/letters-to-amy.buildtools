@@ -4,13 +4,13 @@ use crate::posts::{PostReferences, Posts};
 use itertools::Itertools;
 use std::io::Write;
 
-pub struct ScriptureIndexWriter {
+pub struct Writer {
     w: ContentWriter,
 }
 
-impl ScriptureIndexWriter {
+impl Writer {
     pub fn new(w: ContentWriter) -> Self {
-        ScriptureIndexWriter { w }
+        Writer { w }
     }
 
     const BOOK_REFS_DESCRIPTION: &str = "Scripture index";

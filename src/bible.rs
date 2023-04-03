@@ -9,7 +9,7 @@ use std::{
     num::ParseIntError,
     str::FromStr,
 };
-pub use tabulation::ScriptureIndexWriter;
+pub use tabulation::Writer;
 
 /// integer used for chapter index
 type CInt = u8;

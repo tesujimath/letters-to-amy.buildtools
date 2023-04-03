@@ -1,7 +1,7 @@
 // TODO is this required? - mitigate recursion error when running tests
 #![recursion_limit = "1024"]
 
-use bible::ScriptureIndexWriter;
+use bible::Writer;
 use clap::Parser;
 use std::{path::PathBuf, process::ExitCode};
 
@@ -32,7 +32,7 @@ fn main() -> ExitCode {
     const REF_SECTION: &str = "ref";
 
     let cw = content.section_writer(REF_SECTION).unwrap();
-    let mut sw = ScriptureIndexWriter::new(cw);
+    let mut sw = Writer::new(cw);
     sw.write_posts(&posts).unwrap();
 
     ExitCode::SUCCESS
