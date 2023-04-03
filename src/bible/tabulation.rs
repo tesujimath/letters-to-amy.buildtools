@@ -1,5 +1,6 @@
-use super::hugo::{format_href, write_table, ContentWriter, Header};
-use super::posts::{PostReferences, Posts};
+use super::books::{nt_books_with_abbrev, ot_books_with_abbrev};
+use crate::hugo::{format_href, write_table, ContentWriter, Header};
+use crate::posts::{PostReferences, Posts};
 use itertools::Itertools;
 use std::io::Write;
 
@@ -72,15 +73,15 @@ impl ScriptureIndexWriter {
         Ok(())
     }
 
-    pub fn write_posts(&mut self, posts: &super::posts::Posts) -> anyhow::Result<()> {
+    pub fn write_posts(&mut self, posts: &Posts) -> anyhow::Result<()> {
         self.w.create_branch().and_then(|f| {
             let mut ot_hrefs = Vec::new();
             let mut nt_hrefs = Vec::new();
 
-            self.write_refs(super::bible::ot_books_with_abbrev(), &mut ot_hrefs, posts)?;
+            self.write_refs(ot_books_with_abbrev(), &mut ot_hrefs, posts)?;
             self.write_grid(&f, "Old Testament", &ot_hrefs)?;
 
-            self.write_refs(super::bible::nt_books_with_abbrev(), &mut nt_hrefs, posts)?;
+            self.write_refs(nt_books_with_abbrev(), &mut nt_hrefs, posts)?;
             self.write_grid(&f, "New Testament", &nt_hrefs)?;
 
             Ok(())

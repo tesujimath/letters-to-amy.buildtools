@@ -1,8 +1,8 @@
 // TODO is this required? - mitigate recursion error when running tests
 #![recursion_limit = "1024"]
 
+use bible::ScriptureIndexWriter;
 use clap::Parser;
-use scripture_index::ScriptureIndexWriter;
 use std::{path::PathBuf, process::ExitCode};
 
 #[derive(Parser)]
@@ -41,5 +41,4 @@ fn main() -> ExitCode {
 mod bible;
 mod hugo;
 mod posts;
-mod scripture_index;
 mod util;
