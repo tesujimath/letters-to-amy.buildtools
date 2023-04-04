@@ -84,7 +84,7 @@ impl Ord for PostReferences {
     }
 }
 
-// separated references to a single book
+// separated references to a single book, non-empty
 pub struct BookReferences1(Vec<PostReferences1>);
 
 impl BookReferences1 {
@@ -107,7 +107,7 @@ impl DerefMut for BookReferences1 {
     }
 }
 
-// all the references to a single book
+// all the references to a single book, non-empty
 pub struct BookReferences(Vec<PostReferences>);
 
 impl Deref for BookReferences {
@@ -118,20 +118,33 @@ impl Deref for BookReferences {
     }
 }
 
+// strategy for merging in a new reference
+enum MergeStrategy {
+    Append,
+    Merge(usize),
+    MoveAndMerge(usize, usize),
+}
+
 impl BookReferences {
-    pub fn from_separated(refs1: BookReferences1) -> BookReferences {
+    fn merge_strategy(existing: &[PostReferences], r1: &PostReferences1) -> MergeStrategy {
+        use MergeStrategy::*;
+
+        // TODO look further back than the last
+        match existing.last() {
+            Some(r0) if r0.post_index == r1.post_index => Merge(existing.len() - 1),
+            _ => Append,
+        }
+    }
+
+    fn from_separated(refs1: BookReferences1) -> BookReferences {
         let mut refs: Vec<PostReferences> = Vec::new();
         for r1 in refs1.0.into_iter() {
-            let mut unmerged = None;
-            match refs.last_mut() {
-                Some(r0) if r0.post_index == r1.post_index => {
-                    r0.push(r1);
-                }
-                _ => unmerged = Some(r1),
-            };
+            use MergeStrategy::*;
 
-            if let Some(unmerged) = unmerged {
-                refs.push(PostReferences::from1(unmerged))
+            match BookReferences::merge_strategy(&refs, &r1) {
+                Append => refs.push(PostReferences::from1(r1)),
+                Merge(i) => refs[i].push(r1),
+                _ => panic!("not yet implemented"),
             }
         }
 
