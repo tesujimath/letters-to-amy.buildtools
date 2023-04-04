@@ -2,12 +2,10 @@
 #![allow(dead_code)] //, unused_variables)]
 
 use super::hugo::Metadata;
-use super::util::insert_in_order;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
 pub use extraction::references;
 use itertools::Itertools;
-use std::collections::hash_map;
 use std::{
     cmp::{self, Ordering},
     collections::HashMap,
@@ -16,7 +14,7 @@ use std::{
     ops::{Deref, DerefMut},
     str::FromStr,
 };
-pub use tabulation::Writer;
+pub use tabulation::{BookReferences, BookReferences1, PostReferences, PostReferences1, Writer};
 
 /// integer used for chapter index
 type CInt = u8;
@@ -272,169 +270,13 @@ impl IntoIterator for References {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
-// a post with just one chapters worth of references
-pub struct PostReferences1 {
-    pub post_index: usize,
-    pub cv: ChapterVerses,
-}
-
-impl PostReferences1 {
-    fn new(post_index: usize, cv: ChapterVerses) -> Self {
-        Self { post_index, cv }
-    }
-}
-
-impl PartialOrd for PostReferences1 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PostReferences1 {
-    fn cmp(&self, other: &Self) -> Ordering {
-        use Ordering::*;
-        match self.cv.cmp(&other.cv) {
-            Equal => self.post_index.cmp(&other.post_index),
-            cmp => cmp,
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-// a post with all its chapters' references
-pub struct PostReferences {
-    pub post_index: usize,
-    pub cvs: ChaptersVerses,
-}
-
-impl PostReferences {
-    fn from1(refs1: PostReferences1) -> Self {
-        Self {
-            post_index: refs1.post_index,
-            cvs: ChaptersVerses::new(refs1.cv),
-        }
-    }
-
-    fn push(&mut self, refs1: PostReferences1) {
-        self.cvs.push(refs1.cv);
-    }
-}
-
-impl Display for PostReferences {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{:#}", &self.cvs)
-    }
-}
-
-impl PartialOrd for PostReferences {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PostReferences {
-    fn cmp(&self, other: &Self) -> Ordering {
-        use Ordering::*;
-        match self.cvs.cmp(&other.cvs) {
-            Equal => self.post_index.cmp(&other.post_index),
-            cmp => cmp,
-        }
-    }
-}
-
-// separated references to a single book
-pub struct BookReferences1(Vec<PostReferences1>);
-
-impl BookReferences1 {
-    fn new(post_index: usize, cv: ChapterVerses) -> BookReferences1 {
-        BookReferences1(vec![PostReferences1::new(post_index, cv)])
-    }
-}
-
-impl Deref for BookReferences1 {
-    type Target = Vec<PostReferences1>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for BookReferences1 {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-// all the references to a single book
-pub struct BookReferences(Vec<PostReferences>);
-
-impl BookReferences {
-    fn from_separated(refs1: BookReferences1) -> BookReferences {
-        let mut refs: Vec<PostReferences> = Vec::new();
-        for r1 in refs1.0.into_iter() {
-            let mut unmerged = None;
-            match refs.last_mut() {
-                Some(r0) if r0.post_index == r1.post_index => {
-                    r0.push(r1);
-                }
-                _ => unmerged = Some(r1),
-            };
-
-            if let Some(unmerged) = unmerged {
-                refs.push(PostReferences::from1(unmerged))
-            }
-        }
-
-        BookReferences(refs)
-    }
-}
-
-impl Deref for BookReferences {
-    type Target = Vec<PostReferences>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 pub struct AllReferences {
-    pub metadata: Vec<Metadata>,
-    pub separated_refs_by_book: HashMap<&'static str, BookReferences1>,
-    pub refs_by_book: HashMap<&'static str, BookReferences>,
+    metadata: Vec<Metadata>,
+    separated_refs_by_book: HashMap<&'static str, BookReferences1>,
+    refs_by_book: HashMap<&'static str, BookReferences>,
 }
 
 impl AllReferences {
-    pub fn new() -> Self {
-        AllReferences {
-            metadata: Vec::new(),
-            separated_refs_by_book: HashMap::new(),
-            refs_by_book: HashMap::new(),
-        }
-    }
-
-    // insert the post references separately and return a stable reference to its metadata
-    fn insert(&mut self, metadata: Metadata, refs: References) -> &Metadata {
-        self.metadata.push(metadata);
-        let post_index = self.metadata.len() - 1;
-
-        for (book, cvs) in refs.into_iter() {
-            for cv in cvs.into_iter() {
-                use hash_map::Entry::*;
-                match self.separated_refs_by_book.entry(book) {
-                    Occupied(mut o) => {
-                        insert_in_order(o.get_mut(), PostReferences1::new(post_index, cv));
-                    }
-                    Vacant(v) => {
-                        v.insert(BookReferences1::new(post_index, cv));
-                    }
-                }
-            }
-        }
-
-        self.metadata.last().unwrap()
-    }
-
     // extract bible references for a post and return any warnings
     pub fn extract_from_post(&mut self, post_metadata: Metadata, post_body: &str) -> Vec<String> {
         let (refs, warnings) = references(post_body);
@@ -444,14 +286,6 @@ impl AllReferences {
         let annotated_warnings = warnings.into_iter().map(|w| format!("{}: {}", &m.url, w));
 
         annotated_warnings.collect()
-    }
-
-    pub fn coelesce(&mut self) {
-        self.refs_by_book = HashMap::<&str, BookReferences>::from_iter(
-            self.separated_refs_by_book
-                .drain()
-                .map(|(k, v)| (k, BookReferences::from_separated(v))),
-        );
     }
 }
 

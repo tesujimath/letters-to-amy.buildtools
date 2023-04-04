@@ -37,7 +37,7 @@ impl Metadata {
 
     pub fn format_href(&self) -> String {
         format_href(
-            &self.header.title.as_ref().unwrap_or(&"Unknown".to_string()),
+            self.header.title.as_ref().unwrap_or(&"Unknown".to_string()),
             &self.url,
         )
     }
