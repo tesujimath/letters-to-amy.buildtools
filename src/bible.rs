@@ -1,7 +1,13 @@
+// TODO remove suppression for dead code warning
+#![allow(dead_code)] //, unused_variables)]
+
+use super::hugo::Metadata;
+use super::util::insert_in_order;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
 pub use extraction::references;
 use itertools::Itertools;
+use std::collections::hash_map;
 use std::{
     cmp::{self, Ordering},
     collections::HashMap,
@@ -232,6 +238,73 @@ impl IntoIterator for References {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct PostReferences {
+    pub post_index: usize,
+    pub cvs: ChaptersVerses,
+}
+
+impl PostReferences {
+    fn new(post_index: usize, cvs: ChaptersVerses) -> Self {
+        Self { post_index, cvs }
+    }
+}
+
+impl Display for PostReferences {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{:#}", &self.cvs)
+    }
+}
+
+impl PartialOrd for PostReferences {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PostReferences {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use Ordering::*;
+        match self.cvs.cmp(&other.cvs) {
+            Equal => self.post_index.cmp(&other.post_index),
+            cmp => cmp,
+        }
+    }
+}
+
+pub struct AllReferences {
+    pub metadata: Vec<Metadata>,
+    pub refs_by_book: HashMap<&'static str, Vec<PostReferences>>,
+}
+
+impl AllReferences {
+    pub fn new() -> Self {
+        AllReferences {
+            metadata: Vec::new(),
+            refs_by_book: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, metadata: Metadata, refs: References) {
+        self.metadata.push(metadata);
+        let post_index = self.metadata.len() - 1;
+
+        for (book, cvs) in refs.into_iter() {
+            let post_refs = PostReferences::new(post_index, cvs);
+
+            use hash_map::Entry::*;
+            match self.refs_by_book.entry(book) {
+                Occupied(mut o) => {
+                    insert_in_order(o.get_mut(), post_refs);
+                }
+                Vacant(v) => {
+                    v.insert(vec![post_refs]);
+                }
+            }
+        }
     }
 }
 

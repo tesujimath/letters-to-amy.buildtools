@@ -1,6 +1,8 @@
-use super::books::{nt_books_with_abbrev, ot_books_with_abbrev};
+use super::{
+    books::{nt_books_with_abbrev, ot_books_with_abbrev},
+    AllReferences, PostReferences,
+};
 use crate::hugo::{format_href, write_table, ContentWriter, Header};
-use crate::posts::{PostReferences, Posts};
 use itertools::Itertools;
 use std::io::Write;
 
@@ -20,7 +22,7 @@ impl Writer {
         book: &str,
         abbrev: &str,
         refs: &Vec<PostReferences>,
-        posts: &Posts,
+        posts: &AllReferences,
     ) -> anyhow::Result<String> {
         let h = Header::new(book, Self::BOOK_REFS_DESCRIPTION);
         self.w.create_leaf(&h).and_then(|(mut f, url)| {
@@ -46,7 +48,7 @@ impl Writer {
         &mut self,
         book_abbrev_iter: impl Iterator<Item = (&'static str, &'static str)>,
         hrefs: &mut Vec<String>,
-        posts: &Posts,
+        posts: &AllReferences,
     ) -> anyhow::Result<()> {
         for (book, abbrev) in book_abbrev_iter {
             if let Some(refs) = posts.refs_by_book.get(book) {
@@ -73,7 +75,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn write_posts(&mut self, posts: &Posts) -> anyhow::Result<()> {
+    pub fn write_posts(&mut self, posts: &AllReferences) -> anyhow::Result<()> {
         self.w.create_branch().and_then(|f| {
             let mut ot_hrefs = Vec::new();
             let mut nt_hrefs = Vec::new();

@@ -1,7 +1,7 @@
 // TODO is this required? - mitigate recursion error when running tests
 #![recursion_limit = "1024"]
 
-use bible::Writer;
+use bible::{references, AllReferences, Writer};
 use clap::Parser;
 use std::{path::PathBuf, process::ExitCode};
 
@@ -14,10 +14,10 @@ struct Cli {
 
 fn main() -> ExitCode {
     let content = hugo::Content::new().unwrap();
-    let mut posts = posts::Posts::new();
+    let mut posts = AllReferences::new();
 
     if let Err(e) = content.walk_posts(|metadata, body| {
-        let (refs, warnings) = bible::references(body);
+        let (refs, warnings) = references(body);
 
         for w in warnings {
             println!("WARN: {}: {}", &metadata.url, &w);
@@ -40,5 +40,4 @@ fn main() -> ExitCode {
 
 mod bible;
 mod hugo;
-mod posts;
 mod util;
