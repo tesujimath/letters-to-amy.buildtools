@@ -151,10 +151,6 @@ impl FromStr for Chapter {
 }
 
 impl ChaptersVerses {
-    fn new(item: ChapterVerses) -> Self {
-        Self(vec![item])
-    }
-
     fn insert(&mut self, item: ChapterVerses) {
         match self.0.binary_search_by_key(&item.chapter, |cv| cv.chapter) {
             Ok(i) => self.0[i].verses.merge(item.verses),

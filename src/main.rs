@@ -27,6 +27,8 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
+    refs.coelesce();
+
     const REF_SECTION: &str = "ref";
 
     let cw = content.section_writer(REF_SECTION).unwrap();

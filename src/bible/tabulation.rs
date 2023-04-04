@@ -21,7 +21,7 @@ impl Writer {
         &mut self,
         book: &str,
         abbrev: &str,
-        refs: &Vec<PostReferences>,
+        refs: &[PostReferences],
         posts: &AllReferences,
     ) -> anyhow::Result<String> {
         let h = Header::new(book, Self::BOOK_REFS_DESCRIPTION);
