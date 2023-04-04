@@ -33,7 +33,7 @@ impl Writer {
                 .iter()
                 .map(|r| {
                     let m = &posts.metadata[r.post_index];
-                    vec![m.format_href(), r.to_string()]
+                    vec![r.to_string(), m.format_href()]
                 })
                 .collect::<Vec<Vec<String>>>();
 
