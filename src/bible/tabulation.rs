@@ -75,7 +75,7 @@ impl Writer {
         Ok(())
     }
 
-    pub fn write_posts(&mut self, posts: &AllReferences) -> anyhow::Result<()> {
+    pub fn write_references(&mut self, posts: &AllReferences) -> anyhow::Result<()> {
         self.w.create_branch().and_then(|f| {
             let mut ot_hrefs = Vec::new();
             let mut nt_hrefs = Vec::new();

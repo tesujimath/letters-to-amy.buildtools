@@ -288,7 +288,8 @@ impl AllReferences {
         }
     }
 
-    pub fn insert(&mut self, metadata: Metadata, refs: References) {
+    // insert the post references and return a stable reference to its metadata
+    fn insert(&mut self, metadata: Metadata, refs: References) -> &Metadata {
         self.metadata.push(metadata);
         let post_index = self.metadata.len() - 1;
 
@@ -305,6 +306,18 @@ impl AllReferences {
                 }
             }
         }
+
+        self.metadata.last().unwrap()
+    }
+
+    // extract bible references for a post and return any warnings
+    pub fn extract_from_post(&mut self, post_metadata: Metadata, post_body: &str) -> Vec<String> {
+        let (refs, warnings) = references(post_body);
+        let m = self.insert(post_metadata, refs);
+
+        let annotated_warnings = warnings.into_iter().map(|w| format!("{}: {}", &m.url, w));
+
+        annotated_warnings.collect()
     }
 }
 
