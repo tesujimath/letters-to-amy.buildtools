@@ -30,7 +30,7 @@ impl Display for Chapter {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 struct ChapterContext<'a> {
     book: &'a str,
     chapter: Option<Chapter>,

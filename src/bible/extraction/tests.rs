@@ -363,6 +363,23 @@ fn test_chapters_verses_insert() {
 #[test_case("Luke 18:17", "Luke 18:17")]
 #[test_case("Luke 23:33-34a", "Luke 23:33-34")]
 #[test_case("Luke 4:1-13", "Luke 4:1-13")]
+#[test_case(r#"
+{{< quote source="Luke 22:55-60" >}}
+And when they had kindled a fire in the middle of the courtyard and sat down together, Peter sat down among them. Then a servant girl, seeing him as he sat in the light and looking closely at him, said, “This man also was with him.” But he denied it, saying, “Woman, I do not know him.” And a little later someone else saw him and said, “You also are one of them.” But Peter said, “Man, I am not.” And after an interval of about an hour still another insisted, saying, “Certainly this man also was with him, for he too is a Galilean.” But Peter said, “Man, I do not know what you are talking about.” And immediately, while he was still speaking, the rooster crowed.
+{{< /quote >}}
+
+And then what?
+
+{{< quote source="v61a" >}}
+And the Lord turned and looked at Peter.
+{{< /quote >}}
+
+What would have been in that look from Jesus? Disappointment surely, and sadness⸺sadness beyond imagining⸺but also love, such love. Steadfast love. Irrefutable love. The love that would send Jesus to the cross, in obedience to his Father, love even unto death. Love for Peter.
+
+{{< quote source="v61b-62" >}}
+And Peter remembered the saying of the Lord, how he had said to him, “Before the rooster crows today, you will deny me three times.” And he went out and wept bitterly.
+{{< /quote >}}
+"#, "Luke 22:55-62")]
 #[test_case("Malachi 3:6-7", "Malachi 3:6-7")]
 #[test_case("Malachi 3:6a", "Malachi 3:6")]
 #[test_case("Mark 11:12-14, 20", "Mark 11:12-14,20")]

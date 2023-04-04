@@ -202,7 +202,7 @@ pub fn references(text: &str) -> (References, Vec<String>) {
         // 4. book verse
         static ref REFERENCE_RE: Regex =
             //           (bare verse          )(  prefix     book                  chapter verses)
-            Regex::new(r"(\bv([\d:,\s-]+)[ab]?)|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)?\s*([:v](\d[abv\d:,\s-]*))?)").unwrap();
+            Regex::new(r"(\bv([\dab:,\s-]+))|(([1-3]?)\s*([A-Z][[:alpha:]]+)\s*(\d{1,3}\b)?\s*([:v](\d[abv\d:,\s-]*))?)").unwrap();
     }
 
     let mut references = References::new();
