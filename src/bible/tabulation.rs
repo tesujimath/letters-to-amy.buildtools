@@ -1,3 +1,4 @@
+use super::Chapter;
 use super::{books::Testament, AllReferences, ChapterVerses, ChaptersVerses, References};
 use crate::hugo::{format_href, write_table, ContentWriter, Header, Metadata};
 use crate::util::insert_in_order;
@@ -123,30 +124,38 @@ enum MergeStrategy {
 }
 
 impl BookReferences {
+    fn merge_index(
+        existing: &[PostReferences],
+        post_index: usize,
+        chapters: &[Chapter],
+    ) -> Option<usize> {
+        let i_skip = existing
+            .iter()
+            .enumerate()
+            .rev()
+            .take_while(|(_i, r)| r.post_index != post_index && r.cvs.chapters() == chapters)
+            .map(|(i, _r)| i)
+            .last()
+            .unwrap_or(existing.len());
+
+        if i_skip > 0 && existing[i_skip - 1].post_index == post_index {
+            Some(i_skip - 1)
+        } else {
+            None
+        }
+    }
+
     fn merge_strategy(existing: &[PostReferences], r1: &PostReferences1) -> MergeStrategy {
         use MergeStrategy::*;
 
+        let r1_chapters = r1.cv.chapters();
+
         if existing.is_empty() {
             Append
+        } else if let Some(i) = BookReferences::merge_index(existing, r1.post_index, &r1_chapters) {
+            Merge(i)
         } else {
-            let r1_chapters = r1.cv.chapters();
-            // index of last item over which we can skip
-            let i_skip = existing
-                .iter()
-                .enumerate()
-                .rev()
-                .take_while(|(_i, r)| {
-                    r.post_index != r1.post_index && r.cvs.chapters() == r1_chapters
-                })
-                .map(|(i, _r)| i)
-                .last()
-                .unwrap_or(existing.len());
-
-            if i_skip > 0 && existing[i_skip - 1].post_index == r1.post_index {
-                Merge(i_skip - 1)
-            } else {
-                Append
-            }
+            Append
         }
     }
 
