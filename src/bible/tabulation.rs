@@ -120,7 +120,7 @@ impl Deref for BookReferences {
 enum MergeStrategy {
     Append,
     Merge(usize),
-    // TODO MoveAndMerge(usize, usize),
+    SlideDownAndMerge(usize, usize),
 }
 
 impl BookReferences {
@@ -137,7 +137,7 @@ impl BookReferences {
             .map(|(i, _r)| i)
     }
 
-    fn earliest_insertion(&self, chapters: &[Chapter]) -> usize {
+    fn earliest_same_chapters(&self, chapters: &[Chapter]) -> usize {
         self.0
             .iter()
             .enumerate()
@@ -148,6 +148,17 @@ impl BookReferences {
             .unwrap_or(self.0.len())
     }
 
+    fn latest_same_chapters_from(&self, i: usize, chapters: &[Chapter]) -> usize {
+        self.0
+            .iter()
+            .enumerate()
+            .skip(i)
+            .take_while(|(_i, r)| r.cvs.chapters() == chapters)
+            .map(|(i, _r)| i)
+            .last()
+            .unwrap_or(i)
+    }
+
     fn merge_strategy(&self, r1: &PostReferences1) -> MergeStrategy {
         use MergeStrategy::*;
 
@@ -155,13 +166,20 @@ impl BookReferences {
 
         if self.0.is_empty() {
             Append
-        } else if let Some(i) = self.latest_same_post(r1.post_index) {
-            let j = self.earliest_insertion(&r1_chapters);
+        } else if let Some(i_same_post) = self.latest_same_post(r1.post_index) {
+            let i_chapter_eq = self.earliest_same_chapters(&r1_chapters);
 
-            if j <= i + 1 {
-                Merge(i)
+            if i_chapter_eq <= i_same_post + 1 {
+                Merge(i_same_post)
             } else {
-                Append
+                let same_post_chapters = self.0[i_same_post].cvs.chapters();
+                let i_same_post_limit =
+                    self.latest_same_chapters_from(i_same_post, &same_post_chapters);
+                if i_chapter_eq - 1 <= i_same_post_limit {
+                    SlideDownAndMerge(i_same_post, i_chapter_eq - 1)
+                } else {
+                    Append
+                }
             }
         } else {
             Append
@@ -177,6 +195,11 @@ impl BookReferences {
             match refs.merge_strategy(&r1) {
                 Append => refs.0.push(PostReferences::from1(r1)),
                 Merge(i) => refs.0[i].push(r1),
+                SlideDownAndMerge(i_src, i_dst) => {
+                    let p = refs.0.remove(i_src);
+                    refs.0.insert(i_dst, p);
+                    refs.0[i_dst].push(r1);
+                }
             }
         }
 

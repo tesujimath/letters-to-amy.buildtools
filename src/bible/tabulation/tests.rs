@@ -65,8 +65,19 @@ fn test_bookreferences_from_separated() {
             (2, 10),
             (1, 11),
         ]))),
-        vec![(1, vec![10, 11]), (2, vec![10, 11])],
+        vec![(2, vec![10]), (1, vec![10, 11])],
         "sliding down"
+    );
+
+    assert_eq!(
+        unpack(BookReferences::from_separated(mkrefs1(vec![
+            (1, 10),
+            (2, 10),
+            (3, 11),
+            (1, 11),
+        ]))),
+        vec![(2, vec![10]), (1, vec![10, 11]), (3, vec![11])],
+        "sliding up and down"
     );
 
     assert_eq!(
@@ -76,7 +87,7 @@ fn test_bookreferences_from_separated() {
             (2, 11),
             (1, 11),
         ]))),
-        vec![(1, vec![10, 11]), (2, vec![10, 11])],
-        "sliding up and down"
+        vec![(1, vec![10, 11]), (2, vec![10, 11]),],
+        "sliding up across merged chapters"
     );
 }
