@@ -354,3 +354,5 @@ impl Writer {
         })
     }
 }
+
+mod tests;

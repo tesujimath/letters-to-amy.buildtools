@@ -84,10 +84,6 @@ impl FromStr for VSpan {
 }
 
 impl VSpans {
-    fn new() -> Self {
-        Self(Vec::new())
-    }
-
     /// determine leftmost item from i-1 and i
     fn leftmost_touching(&self, i: usize, item: &VSpan) -> Option<usize> {
         let touching_left = i > 0 && self.0[i - 1].touches(item);

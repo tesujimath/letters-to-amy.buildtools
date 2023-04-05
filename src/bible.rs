@@ -96,6 +96,10 @@ impl fmt::Display for VSpan {
 pub struct VSpans(Vec<VSpan>);
 
 impl VSpans {
+    fn new() -> Self {
+        Self(Vec::new())
+    }
+
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
