@@ -1,5 +1,5 @@
 use super::{
-    books::{nt_books_with_abbrev, ot_books_with_abbrev},
+    books::{books_with_abbrev, Testament},
     AllReferences, ChapterVerses, ChaptersVerses, References,
 };
 use crate::hugo::{format_href, write_table, ContentWriter, Header, Metadata};
@@ -279,14 +279,12 @@ impl Writer {
 
     pub fn write_references(&mut self, posts: &AllReferences) -> anyhow::Result<()> {
         self.w.create_branch().and_then(|f| {
-            let mut ot_hrefs = Vec::new();
-            let mut nt_hrefs = Vec::new();
+            for testament in Testament::all() {
+                let mut hrefs = Vec::new();
 
-            self.write_refs(ot_books_with_abbrev(), &mut ot_hrefs, posts)?;
-            self.write_grid(&f, "Old Testament", &ot_hrefs)?;
-
-            self.write_refs(nt_books_with_abbrev(), &mut nt_hrefs, posts)?;
-            self.write_grid(&f, "New Testament", &nt_hrefs)?;
+                self.write_refs(books_with_abbrev(testament), &mut hrefs, posts)?;
+                self.write_grid(&f, testament.name(), &hrefs)?;
+            }
 
             Ok(())
         })
