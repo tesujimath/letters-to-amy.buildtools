@@ -137,23 +137,23 @@ impl BookReferences {
             .map(|(i, _r)| i)
     }
 
-    fn earliest_same_chapters(&self, chapters: &[Chapter]) -> usize {
+    fn earliest_leq_chapters(&self, other: Chapter) -> usize {
         self.0
             .iter()
             .enumerate()
             .rev()
-            .take_while(|(_i, r)| r.cvs.chapters() == chapters)
+            .take_while(|(_i, r)| r.cvs.chapter_leq(other))
             .map(|(i, _r)| i)
             .last()
             .unwrap_or(self.0.len())
     }
 
-    fn latest_same_chapters_from(&self, i: usize, chapters: &[Chapter]) -> usize {
+    fn latest_chapters_leq_from(&self, i: usize, other: &ChaptersVerses) -> usize {
         self.0
             .iter()
             .enumerate()
             .skip(i)
-            .take_while(|(_i, r)| r.cvs.chapters() == chapters)
+            .take_while(|(_i, r)| r.cvs.leq_chapters(other))
             .map(|(i, _r)| i)
             .last()
             .unwrap_or(i)
@@ -162,27 +162,29 @@ impl BookReferences {
     fn merge_strategy(&self, r1: &PostReferences1) -> MergeStrategy {
         use MergeStrategy::*;
 
-        let r1_chapters = r1.cv.chapters();
+        match r1.cv.chapter {
+            // don't need to merge in books without chapters
+            None => Append,
+            Some(r1_chapter) => {
+                if let Some(i_same_post) = self.latest_same_post(r1.post_index) {
+                    let i_chapter_eq = self.earliest_leq_chapters(r1_chapter);
 
-        if self.0.is_empty() {
-            Append
-        } else if let Some(i_same_post) = self.latest_same_post(r1.post_index) {
-            let i_chapter_eq = self.earliest_same_chapters(&r1_chapters);
-
-            if i_chapter_eq <= i_same_post + 1 {
-                Merge(i_same_post)
-            } else {
-                let same_post_chapters = self.0[i_same_post].cvs.chapters();
-                let i_same_post_limit =
-                    self.latest_same_chapters_from(i_same_post, &same_post_chapters);
-                if i_chapter_eq - 1 <= i_same_post_limit {
-                    SlideDownAndMerge(i_same_post, i_chapter_eq - 1)
+                    if i_chapter_eq <= i_same_post + 1 {
+                        Merge(i_same_post)
+                    } else {
+                        let same_post_cvs = &self.0[i_same_post].cvs;
+                        let i_same_post_limit =
+                            self.latest_chapters_leq_from(i_same_post, same_post_cvs);
+                        if i_chapter_eq - 1 <= i_same_post_limit {
+                            SlideDownAndMerge(i_same_post, i_chapter_eq - 1)
+                        } else {
+                            Append
+                        }
+                    }
                 } else {
                     Append
                 }
             }
-        } else {
-            Append
         }
     }
 

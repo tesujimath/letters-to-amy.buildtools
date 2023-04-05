@@ -4,7 +4,7 @@ use super::super::*;
 use super::*;
 
 #[test]
-fn test_bookreferences_from_separated() {
+fn test_book_references_from_separated() {
     fn mkcv(c: CInt) -> ChapterVerses {
         ChapterVerses::new(Some(Chapter(c)), VSpans::new())
     }

@@ -5,7 +5,7 @@ use super::hugo::Metadata;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
 pub use extraction::references;
-use itertools::Itertools;
+use itertools::{EitherOrBoth, Itertools};
 use std::{
     cmp::{self, Ordering},
     collections::HashMap,
@@ -147,14 +147,6 @@ impl ChapterVerses {
     fn new(chapter: Option<Chapter>, verses: VSpans) -> Self {
         Self { chapter, verses }
     }
-
-    // return chapters as a Vec of length 0 or 1
-    fn chapters(&self) -> Vec<Chapter> {
-        match self.chapter {
-            Some(c) => vec![c],
-            None => Vec::new(),
-        }
-    }
 }
 
 impl PartialOrd for ChapterVerses {
@@ -209,9 +201,28 @@ impl ChaptersVerses {
         Self(vec![item])
     }
 
-    // return chapters as a Vec
-    fn chapters(&self) -> Vec<Chapter> {
-        self.0.iter().flat_map(|cv| cv.chapters()).collect()
+    /// whether `c <= self` with respect to chapters
+    fn chapter_leq(&self, c: Chapter) -> bool {
+        // only need to compare with first
+        match self.0[0].chapter {
+            Some(c0) => c <= c0,
+            None => false,
+        }
+    }
+
+    /// whether `self <= other` with respect to chapters
+    fn leq_chapters(&self, other: &ChaptersVerses) -> bool {
+        use EitherOrBoth::*;
+
+        match self.0.iter().zip_longest(other.0.iter()).find(|z| match z {
+            Both(cv0, cv1) => cv0.chapter != cv1.chapter,
+            _ => true,
+        }) {
+            None => true,
+            Some(Both(cv0, cv1)) => cv0.chapter < cv1.chapter,
+            Some(Left(_)) => false,
+            Some(Right(_)) => true,
+        }
     }
 }
 
