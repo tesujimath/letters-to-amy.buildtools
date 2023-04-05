@@ -135,13 +135,21 @@ impl fmt::Display for VSpans {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct ChapterVerses {
-    chapter: Option<Chapter>,
+    chapter: Option<Chapter>, // missing only in the case of single chapter books like Jude
     verses: VSpans,
 }
 
 impl ChapterVerses {
     fn new(chapter: Option<Chapter>, verses: VSpans) -> Self {
         Self { chapter, verses }
+    }
+
+    // return chapters as a Vec of length 0 or 1
+    fn chapters(&self) -> Vec<Chapter> {
+        match self.chapter {
+            Some(c) => vec![c],
+            None => Vec::new(),
+        }
     }
 }
 
@@ -189,12 +197,17 @@ impl Display for ChapterVerses {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-// a non-empty list of chapter/verses references
+// a non-empty list of chapter/verses references, with chapters strictly increasing
 pub struct ChaptersVerses(Vec<ChapterVerses>);
 
 impl ChaptersVerses {
     fn new(item: ChapterVerses) -> Self {
         Self(vec![item])
+    }
+
+    // return chapters as a Vec
+    fn chapters(&self) -> Vec<Chapter> {
+        self.0.iter().flat_map(|cv| cv.chapters()).collect()
     }
 }
 

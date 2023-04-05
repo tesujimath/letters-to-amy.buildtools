@@ -122,17 +122,34 @@ impl Deref for BookReferences {
 enum MergeStrategy {
     Append,
     Merge(usize),
-    MoveAndMerge(usize, usize),
+    // TODO MoveAndMerge(usize, usize),
 }
 
 impl BookReferences {
     fn merge_strategy(existing: &[PostReferences], r1: &PostReferences1) -> MergeStrategy {
         use MergeStrategy::*;
 
-        // TODO look further back than the last
-        match existing.last() {
-            Some(r0) if r0.post_index == r1.post_index => Merge(existing.len() - 1),
-            _ => Append,
+        if existing.is_empty() {
+            Append
+        } else {
+            let r1_chapters = r1.cv.chapters();
+            // index of last item over which we can skip
+            let i_skip = existing
+                .iter()
+                .enumerate()
+                .rev()
+                .take_while(|(_i, r)| {
+                    r.post_index != r1.post_index && r.cvs.chapters() == r1_chapters
+                })
+                .map(|(i, _r)| i)
+                .last()
+                .unwrap_or(existing.len());
+
+            if i_skip > 0 && existing[i_skip - 1].post_index == r1.post_index {
+                Merge(i_skip - 1)
+            } else {
+                Append
+            }
         }
     }
 
@@ -144,7 +161,6 @@ impl BookReferences {
             match BookReferences::merge_strategy(&refs, &r1) {
                 Append => refs.push(PostReferences::from1(r1)),
                 Merge(i) => refs[i].push(r1),
-                _ => panic!("not yet implemented"),
             }
         }
 
