@@ -124,53 +124,63 @@ enum MergeStrategy {
 }
 
 impl BookReferences {
-    fn merge_index(
-        existing: &[PostReferences],
-        post_index: usize,
-        chapters: &[Chapter],
-    ) -> Option<usize> {
-        let i_skip = existing
+    fn new(p: PostReferences) -> BookReferences {
+        BookReferences(vec![p])
+    }
+
+    fn latest_same_post(&self, post_index: usize) -> Option<usize> {
+        self.0
             .iter()
             .enumerate()
             .rev()
-            .take_while(|(_i, r)| r.post_index != post_index && r.cvs.chapters() == chapters)
+            .find(|(_i, r)| r.post_index == post_index)
             .map(|(i, _r)| i)
-            .last()
-            .unwrap_or(existing.len());
-
-        if i_skip > 0 && existing[i_skip - 1].post_index == post_index {
-            Some(i_skip - 1)
-        } else {
-            None
-        }
     }
 
-    fn merge_strategy(existing: &[PostReferences], r1: &PostReferences1) -> MergeStrategy {
+    fn earliest_insertion(&self, chapters: &[Chapter]) -> usize {
+        self.0
+            .iter()
+            .enumerate()
+            .rev()
+            .take_while(|(_i, r)| r.cvs.chapters() == chapters)
+            .map(|(i, _r)| i)
+            .last()
+            .unwrap_or(self.0.len())
+    }
+
+    fn merge_strategy(&self, r1: &PostReferences1) -> MergeStrategy {
         use MergeStrategy::*;
 
         let r1_chapters = r1.cv.chapters();
 
-        if existing.is_empty() {
+        if self.0.is_empty() {
             Append
-        } else if let Some(i) = BookReferences::merge_index(existing, r1.post_index, &r1_chapters) {
-            Merge(i)
+        } else if let Some(i) = self.latest_same_post(r1.post_index) {
+            let j = self.earliest_insertion(&r1_chapters);
+
+            if j <= i + 1 {
+                Merge(i)
+            } else {
+                Append
+            }
         } else {
             Append
         }
     }
 
     fn from_separated(refs1: BookReferences1) -> BookReferences {
-        let mut refs: Vec<PostReferences> = Vec::new();
-        for r1 in refs1.0.into_iter() {
+        let mut it1 = refs1.0.into_iter();
+        let mut refs = BookReferences::new(PostReferences::from1(it1.by_ref().next().unwrap()));
+        for r1 in it1 {
             use MergeStrategy::*;
 
-            match BookReferences::merge_strategy(&refs, &r1) {
-                Append => refs.push(PostReferences::from1(r1)),
-                Merge(i) => refs[i].push(r1),
+            match refs.merge_strategy(&r1) {
+                Append => refs.0.push(PostReferences::from1(r1)),
+                Merge(i) => refs.0[i].push(r1),
             }
         }
 
-        BookReferences(refs)
+        refs
     }
 }
 
