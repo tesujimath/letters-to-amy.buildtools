@@ -20,12 +20,14 @@ impl Testament {
     pub fn all() -> impl Iterator<Item = Testament> {
         vec![Testament::Old, Testament::New].into_iter()
     }
-}
 
-pub fn books_with_abbrev(
-    testament: Testament,
-) -> impl Iterator<Item = (&'static str, &'static str)> {
-    book_alias_iter(testament).map(|aliases| (aliases[0], aliases[1]))
+    pub fn books(&self) -> impl Iterator<Item = &'static str> {
+        book_alias_iter(*self).map(|aliases| (aliases[0]))
+    }
+
+    pub fn books_with_abbrev(&self) -> impl Iterator<Item = (&'static str, &'static str)> {
+        book_alias_iter(*self).map(|aliases| (aliases[0], aliases[1]))
+    }
 }
 
 pub fn book(prefix: Option<&str>, alias: Option<&str>) -> Option<&'static str> {

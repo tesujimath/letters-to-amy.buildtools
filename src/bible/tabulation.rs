@@ -1,7 +1,4 @@
-use super::{
-    books::{books_with_abbrev, Testament},
-    AllReferences, ChapterVerses, ChaptersVerses, References,
-};
+use super::{books::Testament, AllReferences, ChapterVerses, ChaptersVerses, References};
 use crate::hugo::{format_href, write_table, ContentWriter, Header, Metadata};
 use crate::util::insert_in_order;
 use itertools::Itertools;
@@ -9,7 +6,7 @@ use std::{
     cmp::Ordering,
     collections::{hash_map, HashMap},
     fmt::{self, Display, Formatter},
-    io::Write,
+    io::{self, Write},
     ops::{Deref, DerefMut},
 };
 
@@ -206,6 +203,54 @@ impl AllReferences {
                 .map(|(k, v)| (k, BookReferences::from_separated(v))),
         );
     }
+
+    pub fn dump_repeats(&self, mut w: impl Write) -> io::Result<()> {
+        for testament in Testament::all() {
+            w.write_all(format!("{}\n", testament.name()).as_bytes())?;
+
+            for book in testament.books() {
+                if let Some(refs) = self.refs_by_book.get(book) {
+                    let mut post_count = HashMap::<usize, u8>::new();
+                    for r in refs.iter() {
+                        use hash_map::Entry::*;
+
+                        match post_count.entry(r.post_index) {
+                            Occupied(mut o) => {
+                                *o.get_mut() += 1;
+                            }
+                            Vacant(v) => {
+                                v.insert(1);
+                            }
+                        }
+                    }
+
+                    let mut written_book = false;
+
+                    for (post_index, count) in post_count {
+                        if count > 1 {
+                            if !written_book {
+                                w.write_all(format!("    {}\n", book).as_bytes())?;
+                                written_book = true;
+                            }
+                            w.write_all(
+                                format!(
+                                    "            {} \"{}\"\n",
+                                    count,
+                                    self.metadata[post_index]
+                                        .header
+                                        .title
+                                        .as_ref()
+                                        .unwrap_or(&"UNTITLED".to_string())
+                                )
+                                .as_bytes(),
+                            )?
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 pub struct Writer {
@@ -282,7 +327,7 @@ impl Writer {
             for testament in Testament::all() {
                 let mut hrefs = Vec::new();
 
-                self.write_refs(books_with_abbrev(testament), &mut hrefs, posts)?;
+                self.write_refs(testament.books_with_abbrev(), &mut hrefs, posts)?;
                 self.write_grid(&f, testament.name(), &hrefs)?;
             }
 

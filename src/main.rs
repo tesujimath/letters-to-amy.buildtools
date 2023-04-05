@@ -3,7 +3,7 @@
 
 use bible::{AllReferences, Writer};
 use clap::Parser;
-use std::{path::PathBuf, process::ExitCode};
+use std::{io, path::PathBuf, process::ExitCode};
 
 #[derive(Parser)]
 struct Cli {
@@ -28,6 +28,7 @@ fn main() -> ExitCode {
     }
 
     refs.coelesce();
+    refs.dump_repeats(io::stdout()).unwrap();
 
     const REF_SECTION: &str = "ref";
 
