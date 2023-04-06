@@ -177,6 +177,11 @@ impl BookReferences {
                             self.latest_chapters_leq_from(i_same_post, same_post_cvs);
                         if i_chapter_eq - 1 <= i_same_post_limit {
                             SlideDownAndMerge(i_same_post, i_chapter_eq - 1)
+                        } else if self.0[i_same_post_limit]
+                            .cvs
+                            .leq_chapters_with(r1_chapter, &self.0[i_same_post_limit + 1].cvs)
+                        {
+                            SlideDownAndMerge(i_same_post, i_same_post_limit)
                         } else {
                             Append
                         }

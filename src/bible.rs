@@ -5,11 +5,12 @@ use super::hugo::Metadata;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
 pub use extraction::references;
-use itertools::{EitherOrBoth, Itertools};
+use itertools::Itertools;
 use std::{
     cmp::{self, Ordering},
     collections::HashMap,
     fmt::{self, Display, Formatter},
+    iter::{once, Peekable},
     num::ParseIntError,
     ops::{Deref, DerefMut},
     str::FromStr,
@@ -201,28 +202,57 @@ impl ChaptersVerses {
         Self(vec![item])
     }
 
-    /// whether `c <= self` with respect to chapters
-    fn chapter_leq(&self, c: Chapter) -> bool {
-        // only need to compare with first
-        match self.0[0].chapter {
-            Some(c0) => c <= c0,
+    /// whether `c1 <= self` with respect to chapters, for all
+    fn chapter_leq(&self, c1: Chapter) -> bool {
+        self.0.iter().all(|cv| match cv.chapter {
             None => false,
+            Some(c) => c1 <= c,
+        })
+    }
+
+    fn leq_chapters_it<I1, I2>(mut it0: Peekable<I1>, mut it1: Peekable<I2>) -> bool
+    where
+        I1: Iterator<Item = Chapter>,
+        I2: Iterator<Item = Chapter>,
+    {
+        loop {
+            match (it0.peek(), it1.peek()) {
+                (Some(c0), Some(c1)) if c0 < c1 => {
+                    // skip and keep comparing
+                    it0.next();
+                }
+                (Some(c0), Some(c1)) if c0 == c1 => {
+                    // skip both and keep comparing
+                    it0.next();
+                    it1.next();
+                }
+                (Some(_), Some(_)) => {
+                    return false;
+                }
+                (Some(_), None) => return false,
+                (None, _) => return true,
+            }
         }
     }
 
     /// whether `self <= other` with respect to chapters
     fn leq_chapters(&self, other: &ChaptersVerses) -> bool {
-        use EitherOrBoth::*;
+        Self::leq_chapters_it(
+            self.0.iter().filter_map(|cv| cv.chapter).peekable(),
+            other.0.iter().filter_map(|cv| cv.chapter).peekable(),
+        )
+    }
 
-        match self.0.iter().zip_longest(other.0.iter()).find(|z| match z {
-            Both(cv0, cv1) => cv0.chapter != cv1.chapter,
-            _ => true,
-        }) {
-            None => true,
-            Some(Both(cv0, cv1)) => cv0.chapter < cv1.chapter,
-            Some(Left(_)) => false,
-            Some(Right(_)) => true,
-        }
+    /// whether `self + extra <= other` with respect to chapters
+    fn leq_chapters_with(&self, extra: Chapter, other: &ChaptersVerses) -> bool {
+        Self::leq_chapters_it(
+            self.0
+                .iter()
+                .filter_map(|cv| cv.chapter)
+                .chain(once(extra))
+                .peekable(),
+            other.0.iter().filter_map(|cv| cv.chapter).peekable(),
+        )
     }
 }
 

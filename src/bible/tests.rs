@@ -56,15 +56,19 @@ fn test_chapters_verses_chapter_leq() {
 
 #[test]
 fn test_chapters_verses_leq_chapters() {
-    assert!(mkcvs(vec![1, 3]).leq_chapters(&mkcvs(vec![2, 3])));
+    assert!(mkcvs(vec![1]).leq_chapters(&mkcvs(vec![1])));
+    assert!(mkcvs(vec![1]).leq_chapters(&mkcvs(vec![2])));
+    assert!(mkcvs(vec![1, 2]).leq_chapters(&mkcvs(vec![2, 3])));
     assert!(mkcvs(vec![2, 3]).leq_chapters(&mkcvs(vec![2, 3])));
     assert!(mkcvs(vec![2, 3]).leq_chapters(&mkcvs(vec![2, 4])));
     assert!(mkcvs(vec![2, 3]).leq_chapters(&mkcvs(vec![2, 3, 4])));
     assert!(mkcvs(vec![2]).leq_chapters(&mkcvs(vec![2, 3, 4])));
 
+    assert!(!mkcvs(vec![1, 3]).leq_chapters(&mkcvs(vec![2, 3])));
     assert!(!mkcvs(vec![2, 3]).leq_chapters(&mkcvs(vec![1, 3])));
-    assert!(mkcvs(vec![2, 3]).leq_chapters(&mkcvs(vec![2, 3])));
     assert!(!mkcvs(vec![2, 4]).leq_chapters(&mkcvs(vec![2, 3])));
     assert!(!mkcvs(vec![2, 3, 4]).leq_chapters(&mkcvs(vec![2, 3])));
     assert!(!mkcvs(vec![2, 3, 4]).leq_chapters(&mkcvs(vec![2])));
+
+    assert!(!mkcvs(vec![10, 12]).leq_chapters(&mkcvs(vec![11])));
 }
