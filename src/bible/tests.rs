@@ -2,6 +2,7 @@
 
 use super::*;
 use test_case::test_case;
+use Ordering::*;
 
 #[test]
 fn test_vspan_order() {
@@ -64,33 +65,73 @@ fn mkcvvs(cvs: Vec<(CInt, Vec<VInt>)>) -> ChaptersVerses {
 #[test_case(
     (1, vec![10, 11]),
     (2, vec![1]),
-    Ordering::Less;
+    Less;
     "all less")]
 #[test_case(
     (1, vec![10, 11]),
     (1, vec![12]),
-    Ordering::Less;
+    Less;
     "verses all less")]
 #[test_case(
     (1, vec![10, 12]),
     (1, vec![11]),
-    Ordering::Less;
-    "initial verse less")]
-fn test_chapter_verses_order(cv1: (CInt, Vec<VInt>), cv2: (CInt, Vec<VInt>), expected: Ordering) {
+    Less;
+    "initial verse less 1")]
+#[test_case(
+    (1, vec![10, 12, 13]),
+    (1, vec![11, 15, 16]),
+    Less;
+    "initial verse less 2")]
+fn test_chapter_verses_cmp(cv1: (CInt, Vec<VInt>), cv2: (CInt, Vec<VInt>), expected: Ordering) {
     assert_eq!(&mkcvv(cv1.0, cv1.1).cmp(&mkcvv(cv2.0, cv2.1)), &expected);
 }
 
 #[test_case(
+    vec![(1, vec![10, 11]), (2, vec![10]), (3, vec![4])],
+    vec![(1, vec![10, 11]), (2, vec![10]), (3, vec![4])],
+    Some(Equal);
+    "same chapters and verses")]
+#[test_case(
+    vec![(1, vec![9, 11]), (2, vec![10]), (3, vec![4])],
+    vec![(1, vec![10, 11]), (2, vec![10]), (3, vec![4])],
+    Some(Less);
+    "same chapters less verses 1")]
+#[test_case(
+    vec![(1, vec![10, 11]), (2, vec![10]), (3, vec![3])],
+    vec![(1, vec![10, 11]), (2, vec![10]), (3, vec![4])],
+    Some(Less);
+    "same chapters less verses 2")]
+#[test_case(
     vec![(1, vec![10, 11]), (2, vec![10])],
     vec![(3, vec![1])],
-    Ordering::Less;
+    Some(Less);
     "all less")]
-fn test_chapters_verses_order(
+#[test_case(
+    vec![(1, vec![1]), (3, vec![1])],
+    vec![(2, vec![1])],
+    None;
+    "in-between chapters 1")]
+#[test_case(
+    vec![(1, vec![1]), (2, vec![1]), (3, vec![1])],
+    vec![(2, vec![1])],
+    None;
+    "in-between chapters 2")]
+#[test_case(
+    vec![(1, vec![1]), (2, vec![2])],
+    vec![(2, vec![1])],
+    Some(Less);
+    "in-between verses")]
+#[test_case(
+    vec![(1, vec![1]), (3, vec![1])],
+    vec![(2, vec![1]), (4, vec![1])],
+    None;
+    "interleaved chapters")]
+fn test_chapters_verses_partial_cmp(
     cvs1: Vec<(CInt, Vec<VInt>)>,
     cvs2: Vec<(CInt, Vec<VInt>)>,
-    expected: Ordering,
+    expected: Option<Ordering>,
 ) {
-    assert_eq!(&mkcvvs(cvs1).cmp(&mkcvvs(cvs2)), &expected);
+    assert_eq!(&mkcvvs(cvs1).partial_cmp(&mkcvvs(cvs2)), &expected);
 }
 
 #[test]

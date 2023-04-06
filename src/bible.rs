@@ -12,7 +12,6 @@ use std::{
     fmt::{self, Display, Formatter},
     iter::{once, Peekable},
     num::ParseIntError,
-    ops::{Deref, DerefMut},
     str::FromStr,
 };
 pub use tabulation::{BookReferences, BookReferences1, PostReferences, PostReferences1, Writer};
@@ -256,29 +255,61 @@ impl ChaptersVerses {
     }
 }
 
-impl Deref for ChaptersVerses {
-    type Target = Vec<ChapterVerses>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for ChaptersVerses {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 impl PartialOrd for ChaptersVerses {
+    /// To determine whether there is an ordering, verses are ignored,
+    /// only chapters matter, but these must be strictly in order, with no interleaving.
+    /// If an ordering is possible, the earliest verses that differ influence the order.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+        fn compatible(o1: Ordering, o2: Ordering) -> bool {
+            match (o1, o2) {
+                (Less, Greater) => false,
+                (Greater, Less) => false,
+                _ => true,
+            }
+        }
 
-impl Ord for ChaptersVerses {
-    fn cmp(&self, other: &Self) -> Ordering {
-        slice_cmp(&self.0, &other.0)
+        fn all_compatible(o: Ordering, cvs0: &[&ChapterVerses], cvs1: &[&ChapterVerses]) -> bool {
+            cvs0.iter().all(|cv0| {
+                cvs1.iter()
+                    .all(|cv1| compatible(o, cv0.chapter.cmp(&cv1.chapter)))
+            })
+        }
+
+        let mut it0 = self.0.iter().peekable();
+        let mut it1 = other.0.iter().peekable();
+
+        use Ordering::*;
+        let mut verse_order: Option<Ordering> = None;
+
+        loop {
+            match (it0.peek(), it1.peek()) {
+                (Some(cv0), Some(cv1)) => {
+                    match cv0.chapter.cmp(&cv1.chapter) {
+                        Equal => {
+                            if verse_order.is_none() || verse_order == Some(Equal) {
+                                verse_order = Some(cv0.cmp(cv1));
+                            }
+
+                            // skip both and keep comparing
+                            it0.next();
+                            it1.next();
+                        }
+                        candidate => {
+                            let v0 = it0.collect::<Vec<&ChapterVerses>>();
+                            let v1 = it1.collect::<Vec<&ChapterVerses>>();
+                            if all_compatible(candidate, &v0, &v1) {
+                                return Some(candidate);
+                            } else {
+                                return None;
+                            }
+                        }
+                    }
+                }
+                (Some(_), None) => return Some(Greater),
+                (None, Some(_)) => return Some(Less),
+                (None, None) => return verse_order.or(Some(Equal)),
+            }
+        }
     }
 }
 

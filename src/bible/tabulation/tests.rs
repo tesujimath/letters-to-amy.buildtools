@@ -9,7 +9,7 @@ fn unpack(refs: BookReferences) -> Vec<(usize, Vec<CInt>)> {
         .map(|p| {
             (
                 p.post_index,
-                p.cvs.iter().map(|cv| cv.chapter.unwrap().0).collect(),
+                p.cvs.0.iter().map(|cv| cv.chapter.unwrap().0).collect(),
             )
         })
         .collect()

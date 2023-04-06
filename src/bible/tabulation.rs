@@ -56,7 +56,7 @@ impl PostReferences {
     }
 
     fn push(&mut self, refs1: PostReferences1) {
-        self.cvs.push(refs1.cv);
+        self.cvs.0.push(refs1.cv);
     }
 }
 
@@ -68,15 +68,9 @@ impl Display for PostReferences {
 
 impl PartialOrd for PostReferences {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PostReferences {
-    fn cmp(&self, other: &Self) -> Ordering {
         use Ordering::*;
-        match self.cvs.cmp(&other.cvs) {
-            Equal => self.post_index.cmp(&other.post_index),
+        match self.cvs.partial_cmp(&other.cvs) {
+            Some(Equal) => Some(self.post_index.cmp(&other.post_index)),
             cmp => cmp,
         }
     }
