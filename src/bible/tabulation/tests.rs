@@ -4,17 +4,14 @@ use super::super::*;
 use super::*;
 use test_case::test_case;
 
-/*
 #[test_case(
     vec![(1, 10), (1, 11)],
     vec![(1, vec![10, 11])];
     "simple concatenation")]
-*/
 #[test_case(
     vec![(1, 10), (2, 11), (1, 12)],
     vec![(1, vec![10]), (2, vec![11]), (1, vec![12])];
     "simple concatenation, two posts")]
-/*
 #[test_case(
     vec![(1, 10), (2, 11), (1, 11)],
     vec![(1, vec![10, 11]), (2, vec![11])];
@@ -32,10 +29,13 @@ use test_case::test_case;
     vec![(1, vec![10, 11]), (2, vec![10, 11])];
     "sliding up across merged chapters")]
 #[test_case(
+    vec![(1, 10), (2, 10), (1, 11), (2, 11)],
+    vec![(1, vec![10, 11]), (2, vec![10, 11])];
+    "interleaved refs")]
+#[test_case(
     vec![(1, 10), (2, 10), (3, 10), (3, 11), (1, 11)],
     vec![(2, vec![10]), (1, vec![10, 11]), (3, vec![10, 11])];
     "sliding up and down across merged chapters")]
-*/
 fn test_book_references_from_separated(
     refs1: Vec<(usize, CInt)>,
     expected: Vec<(usize, Vec<CInt>)>,

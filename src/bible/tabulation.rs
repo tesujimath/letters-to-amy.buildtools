@@ -169,7 +169,11 @@ impl BookReferences {
                 if let Some(i_same_post) = self.latest_same_post(r1.post_index) {
                     let i_chapter_eq = self.earliest_leq_chapters(r1_chapter);
 
-                    if i_chapter_eq <= i_same_post + 1 {
+                    if i_chapter_eq <= i_same_post + 1
+                        || self.0[i_same_post]
+                            .cvs
+                            .with_extra_leq_chapters(r1_chapter, &self.0[i_same_post + 1].cvs)
+                    {
                         Merge(i_same_post)
                     } else {
                         let same_post_cvs = &self.0[i_same_post].cvs;
@@ -179,7 +183,7 @@ impl BookReferences {
                             SlideDownAndMerge(i_same_post, i_chapter_eq - 1)
                         } else if self.0[i_same_post_limit]
                             .cvs
-                            .leq_chapters_with(r1_chapter, &self.0[i_same_post_limit + 1].cvs)
+                            .with_extra_leq_chapters(r1_chapter, &self.0[i_same_post_limit + 1].cvs)
                         {
                             SlideDownAndMerge(i_same_post, i_same_post_limit)
                         } else {

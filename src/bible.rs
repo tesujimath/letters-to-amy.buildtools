@@ -244,7 +244,7 @@ impl ChaptersVerses {
     }
 
     /// whether `self + extra <= other` with respect to chapters
-    fn leq_chapters_with(&self, extra: Chapter, other: &ChaptersVerses) -> bool {
+    fn with_extra_leq_chapters(&self, extra: Chapter, other: &ChaptersVerses) -> bool {
         Self::leq_chapters_it(
             self.0
                 .iter()
