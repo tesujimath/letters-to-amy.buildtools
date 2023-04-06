@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use super::*;
+use test_case::test_case;
 
 #[test]
 fn test_vspan_order() {
@@ -44,6 +45,52 @@ fn mkcvs(cs: Vec<CInt>) -> ChaptersVerses {
         cvs.0.push(mkcv(*c))
     }
     cvs
+}
+
+fn mkcvv(c: CInt, vs: Vec<VInt>) -> ChapterVerses {
+    let vspans = VSpans(vs.into_iter().map(VSpan::Point).collect::<Vec<VSpan>>());
+
+    ChapterVerses::new(Some(Chapter(c)), vspans)
+}
+
+fn mkcvvs(cvs: Vec<(CInt, Vec<VInt>)>) -> ChaptersVerses {
+    ChaptersVerses(
+        cvs.into_iter()
+            .map(|(c, vs)| mkcvv(c, vs))
+            .collect::<Vec<ChapterVerses>>(),
+    )
+}
+
+#[test_case(
+    (1, vec![10, 11]),
+    (2, vec![1]),
+    Ordering::Less;
+    "all less")]
+#[test_case(
+    (1, vec![10, 11]),
+    (1, vec![12]),
+    Ordering::Less;
+    "verses all less")]
+#[test_case(
+    (1, vec![10, 12]),
+    (1, vec![11]),
+    Ordering::Less;
+    "initial verse less")]
+fn test_chapter_verses_order(cv1: (CInt, Vec<VInt>), cv2: (CInt, Vec<VInt>), expected: Ordering) {
+    assert_eq!(&mkcvv(cv1.0, cv1.1).cmp(&mkcvv(cv2.0, cv2.1)), &expected);
+}
+
+#[test_case(
+    vec![(1, vec![10, 11]), (2, vec![10])],
+    vec![(3, vec![1])],
+    Ordering::Less;
+    "all less")]
+fn test_chapters_verses_order(
+    cvs1: Vec<(CInt, Vec<VInt>)>,
+    cvs2: Vec<(CInt, Vec<VInt>)>,
+    expected: Ordering,
+) {
+    assert_eq!(&mkcvvs(cvs1).cmp(&mkcvvs(cvs2)), &expected);
 }
 
 #[test]

@@ -16,7 +16,7 @@ fn test_slice_cmp() {
 }
 
 #[test]
-fn x() {
+fn test_insert_in_order() {
     let mut v = Vec::new();
     insert_in_order(&mut v, 2);
     insert_in_order(&mut v, 1);
