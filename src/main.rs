@@ -2,17 +2,31 @@
 #![recursion_limit = "1024"]
 
 use bible::{AllReferences, Writer};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::{io, path::PathBuf, process::ExitCode};
 
 #[derive(Parser)]
 struct Cli {
     #[arg(short, long)]
     root: Option<PathBuf>,
-    // TODO the rest
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    CreateScriptureIndex,
 }
 
 fn main() -> ExitCode {
+    let cli = Cli::parse();
+
+    match &cli.command {
+        Commands::CreateScriptureIndex => create_scripture_index(),
+    }
+}
+
+fn create_scripture_index() -> ExitCode {
     let content = hugo::Content::new().unwrap();
     let mut refs = AllReferences::new();
 
