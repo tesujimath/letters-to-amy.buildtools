@@ -5,7 +5,8 @@ use super::*;
 use test_case::test_case;
 
 fn unpack(refs: BookReferences) -> Vec<(usize, Vec<CInt>)> {
-    refs.iter()
+    refs.0
+        .iter()
         .map(|p| {
             (
                 p.post_index,
@@ -64,7 +65,7 @@ fn test_book_references_from_separated(
         let mut refs1 = BookReferences1::new(pcs[0].0, create_chapter_verses(pcs[0].1, pcs[0].2));
 
         for pc in pcs.iter().skip(1) {
-            refs1.push(PostReferences1::new(
+            refs1.0.push(PostReferences1::new(
                 pc.0,
                 create_chapter_verses(pc.1, pc.2),
             ));

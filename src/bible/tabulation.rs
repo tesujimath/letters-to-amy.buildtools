@@ -7,7 +7,6 @@ use std::{
     collections::{hash_map, HashMap},
     fmt::{self, Display, Formatter},
     io::{self, Write},
-    ops::{Deref, DerefMut},
 };
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -84,30 +83,8 @@ impl BookReferences1 {
     }
 }
 
-impl Deref for BookReferences1 {
-    type Target = Vec<PostReferences1>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for BookReferences1 {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 // all the references to a single book, non-empty
 pub struct BookReferences(Vec<PostReferences>);
-
-impl Deref for BookReferences {
-    type Target = Vec<PostReferences>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 // strategy for merging in a new reference
 enum MergeStrategy {
@@ -211,7 +188,8 @@ impl AllReferences {
                 use hash_map::Entry::*;
                 match self.separated_refs_by_book.entry(book) {
                     Occupied(mut o) => {
-                        insert_in_order(o.get_mut(), PostReferences1::new(post_index, cv));
+                        let br = o.get_mut();
+                        insert_in_order(&mut br.0, PostReferences1::new(post_index, cv));
                     }
                     Vacant(v) => {
                         v.insert(BookReferences1::new(post_index, cv));
@@ -238,7 +216,7 @@ impl AllReferences {
             for book in testament.books() {
                 if let Some(refs) = self.refs_by_book.get(book) {
                     let mut post_count = HashMap::<usize, u8>::new();
-                    for r in refs.iter() {
+                    for r in refs.0.iter() {
                         use hash_map::Entry::*;
 
                         match post_count.entry(r.post_index) {
@@ -326,7 +304,7 @@ impl Writer {
     ) -> anyhow::Result<()> {
         for (book, abbrev) in book_abbrev_iter {
             if let Some(refs) = posts.refs_by_book.get(book) {
-                let href = self.write_book_refs(book, abbrev, refs, posts)?;
+                let href = self.write_book_refs(book, abbrev, &refs.0, posts)?;
                 hrefs.push(href);
             }
         }
