@@ -10,7 +10,6 @@ use std::{
     cmp::{self, Ordering},
     collections::HashMap,
     fmt::{self, Display, Formatter},
-    iter::{once, Peekable},
     num::ParseIntError,
     str::FromStr,
 };
@@ -200,59 +199,6 @@ impl ChaptersVerses {
     fn new(item: ChapterVerses) -> Self {
         Self(vec![item])
     }
-
-    /// whether `c1 <= self` with respect to chapters, for all
-    fn chapter_leq(&self, c1: Chapter) -> bool {
-        self.0.iter().all(|cv| match cv.chapter {
-            None => false,
-            Some(c) => c1 <= c,
-        })
-    }
-
-    fn leq_chapters_it<I1, I2>(mut it0: Peekable<I1>, mut it1: Peekable<I2>) -> bool
-    where
-        I1: Iterator<Item = Chapter>,
-        I2: Iterator<Item = Chapter>,
-    {
-        loop {
-            match (it0.peek(), it1.peek()) {
-                (Some(c0), Some(c1)) if c0 < c1 => {
-                    // skip and keep comparing
-                    it0.next();
-                }
-                (Some(c0), Some(c1)) if c0 == c1 => {
-                    // skip both and keep comparing
-                    it0.next();
-                    it1.next();
-                }
-                (Some(_), Some(_)) => {
-                    return false;
-                }
-                (Some(_), None) => return false,
-                (None, _) => return true,
-            }
-        }
-    }
-
-    /// whether `self <= other` with respect to chapters
-    fn leq_chapters(&self, other: &ChaptersVerses) -> bool {
-        Self::leq_chapters_it(
-            self.0.iter().filter_map(|cv| cv.chapter).peekable(),
-            other.0.iter().filter_map(|cv| cv.chapter).peekable(),
-        )
-    }
-
-    /// whether `self + extra <= other` with respect to chapters
-    fn with_extra_leq_chapters(&self, extra: Chapter, other: &ChaptersVerses) -> bool {
-        Self::leq_chapters_it(
-            self.0
-                .iter()
-                .filter_map(|cv| cv.chapter)
-                .chain(once(extra))
-                .peekable(),
-            other.0.iter().filter_map(|cv| cv.chapter).peekable(),
-        )
-    }
 }
 
 impl PartialOrd for ChaptersVerses {
@@ -261,11 +207,7 @@ impl PartialOrd for ChaptersVerses {
     /// If an ordering is possible, the earliest verses that differ influence the order.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         fn compatible(o1: Ordering, o2: Ordering) -> bool {
-            match (o1, o2) {
-                (Less, Greater) => false,
-                (Greater, Less) => false,
-                _ => true,
-            }
+            !matches!((o1, o2), (Less, Greater) | (Greater, Less))
         }
 
         fn all_compatible(o: Ordering, cvs0: &[&ChapterVerses], cvs1: &[&ChapterVerses]) -> bool {
