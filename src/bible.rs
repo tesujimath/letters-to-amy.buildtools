@@ -38,7 +38,7 @@ struct ChapterContext<'a> {
 type VInt = u8;
 
 /// Span used for verses
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum VSpan {
     Point(VInt),
     Line(VInt, VInt),
@@ -92,7 +92,7 @@ impl fmt::Display for VSpan {
 }
 
 /// Spans used for verses
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct VSpans(Vec<VSpan>);
 
 impl VSpans {
@@ -137,7 +137,7 @@ impl fmt::Display for VSpans {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct ChapterVerses {
     chapter: Option<Chapter>, // missing only in the case of single chapter books like Jude
     verses: VSpans,
@@ -192,7 +192,7 @@ impl Display for ChapterVerses {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 // a non-empty list of chapter/verses references, with chapters strictly increasing
 pub struct ChaptersVerses(Vec<ChapterVerses>);
 

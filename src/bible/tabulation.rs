@@ -1,4 +1,3 @@
-use super::Chapter;
 use super::{books::Testament, AllReferences, ChapterVerses, ChaptersVerses, References};
 use crate::hugo::{format_href, write_table, ContentWriter, Header, Metadata};
 use crate::util::insert_in_order;
@@ -11,7 +10,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 // a post with just one chapters worth of references
 pub struct PostReferences1 {
     pub post_index: usize,
@@ -40,7 +39,7 @@ impl Ord for PostReferences1 {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 // a post with all its chapters' references
 pub struct PostReferences {
     pub post_index: usize,
@@ -114,7 +113,7 @@ impl Deref for BookReferences {
 enum MergeStrategy {
     Append,
     Merge(usize),
-    SlideDownAndMerge(usize, usize),
+    MoveAndMerge(usize, usize),
 }
 
 impl BookReferences {
@@ -131,58 +130,39 @@ impl BookReferences {
             .map(|(i, _r)| i)
     }
 
-    fn earliest_leq_chapters(&self, other: Chapter) -> usize {
-        self.0
-            .iter()
-            .enumerate()
-            .rev()
-            .take_while(|(_i, r)| r.cvs.chapter_leq(other))
-            .map(|(i, _r)| i)
-            .last()
-            .unwrap_or(self.0.len())
-    }
-
-    fn latest_chapters_leq_from(&self, i: usize, other: &ChaptersVerses) -> usize {
-        self.0
-            .iter()
-            .enumerate()
-            .skip(i)
-            .take_while(|(_i, r)| r.cvs.leq_chapters(other))
-            .map(|(i, _r)| i)
-            .last()
-            .unwrap_or(i)
-    }
-
     fn merge_strategy(&self, r1: &PostReferences1) -> MergeStrategy {
         use MergeStrategy::*;
 
         match r1.cv.chapter {
             // don't need to merge in books without chapters
             None => Append,
-            Some(r1_chapter) => {
+            Some(_) => {
                 if let Some(i_same_post) = self.latest_same_post(r1.post_index) {
-                    let i_chapter_eq = self.earliest_leq_chapters(r1_chapter);
+                    // see if we can maintain order by merging these
 
-                    if i_chapter_eq <= i_same_post + 1
-                        || self.0[i_same_post]
-                            .cvs
-                            .with_extra_leq_chapters(r1_chapter, &self.0[i_same_post + 1].cvs)
-                    {
-                        Merge(i_same_post)
-                    } else {
-                        let same_post_cvs = &self.0[i_same_post].cvs;
-                        let i_same_post_limit =
-                            self.latest_chapters_leq_from(i_same_post, same_post_cvs);
-                        if i_chapter_eq - 1 <= i_same_post_limit {
-                            SlideDownAndMerge(i_same_post, i_chapter_eq - 1)
-                        } else if self.0[i_same_post_limit]
-                            .cvs
-                            .with_extra_leq_chapters(r1_chapter, &self.0[i_same_post_limit + 1].cvs)
+                    // make a temporary candidate and test that
+                    let mut candidate = self.0[i_same_post].clone();
+                    candidate.push(r1.clone());
+
+                    let orderings = self.0[i_same_post + 1..]
+                        .iter()
+                        .map(|p| candidate.partial_cmp(p))
+                        .collect::<Vec<Option<Ordering>>>();
+
+                    if orderings.iter().all(|o| o.is_some()) {
+                        // can merge, yay!
+                        // so find where we have to move the previous post so we can merge
+                        match orderings
+                            .iter()
+                            .zip(i_same_post + 1..)
+                            .find(|(o, _)| **o == Some(Ordering::Less))
                         {
-                            SlideDownAndMerge(i_same_post, i_same_post_limit)
-                        } else {
-                            Append
+                            Some((_, i)) => MoveAndMerge(i_same_post, i),
+                            None => MoveAndMerge(i_same_post, self.0.len()),
                         }
+                    } else {
+                        // nope
+                        Append
                     }
                 } else {
                     Append
@@ -200,10 +180,10 @@ impl BookReferences {
             match refs.merge_strategy(&r1) {
                 Append => refs.0.push(PostReferences::from1(r1)),
                 Merge(i) => refs.0[i].push(r1),
-                SlideDownAndMerge(i_src, i_dst) => {
+                MoveAndMerge(i_src, i_dst) => {
                     let p = refs.0.remove(i_src);
-                    refs.0.insert(i_dst, p);
-                    refs.0[i_dst].push(r1);
+                    refs.0.insert(i_dst - 1, p);
+                    refs.0[i_dst - 1].push(r1);
                 }
             }
         }

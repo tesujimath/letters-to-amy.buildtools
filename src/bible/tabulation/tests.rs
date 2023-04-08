@@ -16,66 +16,42 @@ fn unpack(refs: BookReferences) -> Vec<(usize, Vec<CInt>)> {
 }
 
 #[test_case(
-    vec![(1, 10), (1, 11)],
+    vec![(1, 10, 1), (1, 11, 1)],
     vec![(1, vec![10, 11])];
     "simple concatenation")]
 #[test_case(
-    vec![(1, 10), (2, 11), (1, 12)],
+    vec![(1, 10, 1), (2, 11, 1), (1, 12, 1)],
     vec![(1, vec![10]), (2, vec![11]), (1, vec![12])];
     "simple concatenation, two posts")]
 #[test_case(
-    vec![(1, 10), (2, 11), (1, 11)],
+    vec![(1, 10, 1), (2, 11, 1), (1, 11, 1)],
     vec![(1, vec![10, 11]), (2, vec![11])];
-    "sliding up")]
+    "merge in place")]
 #[test_case(
-    vec![(1, 10), (2, 10), (1, 11)],
+    vec![(1, 10, 1), (2, 10, 1), (1, 11, 1)],
     vec![(2, vec![10]), (1, vec![10, 11])];
-    "sliding down")]
+    "move to end and merge")]
 #[test_case(
-    vec![(1, 10), (2, 10), (3, 11), (1, 11)],
+    vec![(1, 10, 1), (2, 10, 1), (3, 11, 1), (1, 11, 1)],
     vec![(2, vec![10]), (1, vec![10, 11]), (3, vec![11])];
-    "sliding up and down")]
+    "move to middle and merge")]
 #[test_case(
-    vec![(1, 10), (2, 10), (2, 11), (1, 11)],
+    vec![(1, 10, 1), (2, 10, 1), (2, 11, 1), (1, 11, 1)],
     vec![(1, vec![10, 11]), (2, vec![10, 11])];
-    "sliding up across merged chapters")]
+    "merge with already merged")]
 #[test_case(
-    vec![(1, 10), (2, 10), (3, 10), (3, 11), (1, 11)],
+    vec![(1, 10, 1), (2, 10, 1), (3, 10, 1), (3, 11, 1), (1, 11, 1)],
     vec![(2, vec![10]), (1, vec![10, 11]), (3, vec![10, 11])];
-    "sliding up and down across merged chapters")]
-fn test_book_references_from_separated(
-    refs1: Vec<(usize, CInt)>,
-    expected: Vec<(usize, Vec<CInt>)>,
-) {
-    fn mkcv(c: CInt) -> ChapterVerses {
-        ChapterVerses::new(Some(Chapter(c)), VSpans::new())
-    }
-
-    fn mkrefs1(pcs: Vec<(usize, CInt)>) -> BookReferences1 {
-        let mut refs1 = BookReferences1::new(pcs[0].0, mkcv(pcs[0].1));
-
-        for pc in pcs.iter().skip(1) {
-            refs1.push(PostReferences1::new(pc.0, mkcv(pc.1)));
-        }
-
-        refs1
-    }
-
-    assert_eq!(
-        unpack(BookReferences::from_separated(mkrefs1(refs1))),
-        expected
-    );
-}
-
-#[test_case(
-    vec![(1, 10, 1), (2, 10, 2), (1, 11, 1)],
-    vec![(2, vec![10]), (1, vec![10, 11])];
-    "simple refs")]
+    "move to middle and merge with already merged")]
 #[test_case(
     vec![(1, 10, 1), (2, 10, 2), (1, 11, 1), (2, 11, 3)],
-    vec![(1, vec![10, 11]), (2, vec![10, 12])];
-    "interleaved refs")]
-fn test_book_references_from_separated_with_verse_ordering(
+    vec![(1, vec![10, 11]), (2, vec![10, 11])];
+    "interleaved 1")]
+#[test_case(
+    vec![(1, 10, 2), (2, 10, 1), (1, 11, 4), (2, 11, 3)],
+    vec![(2, vec![10, 11]), (1, vec![10, 11])];
+    "interleaved 2")]
+fn test_book_references_from_separated(
     refs1: Vec<(usize, CInt, VInt)>,
     expected: Vec<(usize, Vec<CInt>)>,
 ) {
