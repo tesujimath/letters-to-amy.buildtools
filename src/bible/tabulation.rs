@@ -1,5 +1,5 @@
 use super::{books::Testament, AllReferences, ChapterVerses, ChaptersVerses, References};
-use crate::hugo::{format_href, write_table, ContentWriter, Header, Metadata};
+use crate::hugo::content::{format_href, write_table, ContentWriter, Header, Metadata};
 use crate::util::insert_in_order;
 use itertools::Itertools;
 use std::{

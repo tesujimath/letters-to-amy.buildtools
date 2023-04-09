@@ -27,7 +27,7 @@ fn main() -> ExitCode {
 }
 
 fn create_scripture_index() -> ExitCode {
-    let content = hugo::Content::new().unwrap();
+    let content = hugo::content::Content::new().unwrap();
     let mut refs = AllReferences::new();
 
     if let Err(e) = content.walk_posts(|metadata, body| {

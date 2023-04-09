@@ -1,7 +1,7 @@
 // TODO remove suppression for dead code warning
 #![allow(dead_code)] //, unused_variables)]
 
-use super::hugo::Metadata;
+use super::hugo::content::Metadata;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
 pub use extraction::references;
