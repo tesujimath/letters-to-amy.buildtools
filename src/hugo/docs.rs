@@ -1,6 +1,3 @@
-// TODO remove suppression for dead code warning
-#![allow(dead_code)] //, unused_variables)]
-
 use std::{
     io,
     path::{Path, PathBuf},

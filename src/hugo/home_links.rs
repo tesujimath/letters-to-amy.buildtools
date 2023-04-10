@@ -1,6 +1,3 @@
-// TODO remove suppression for dead code warning
-#![allow(dead_code)] //, unused_variables)]
-
 use super::docs::Docs;
 use anyhow::{Context, Result};
 use lol_html::{element, HtmlRewriter, Settings};
@@ -37,17 +34,14 @@ where
 
     let mut rewriter = HtmlRewriter::new(
         Settings {
-            element_content_handlers: vec![
-                // Rewrite insecure hyperlinks
-                element!("h2.article-title a[href]", |el| {
-                    let href = el.get_attribute("href").unwrap(); //.replace("http:", "https:");
-                    post_hrefs.push(href);
-                    Ok(())
-                }),
-            ],
+            element_content_handlers: vec![element!("h2.article-title a[href]", |el| {
+                let href = el.get_attribute("href").unwrap();
+                post_hrefs.push(href);
+                Ok(())
+            })],
             ..Settings::default()
         },
-        |_c: &[u8]| (), // don't write anything
+        |_c: &[u8]| (), // don't write anything, we're just snooping around
     );
 
     f.read_to_end(&mut buffer)?;
@@ -89,7 +83,7 @@ where
                 .collect(),
             ..Settings::default()
         },
-        |c: &[u8]| dst_buf.extend_from_slice(c), // don't write anything
+        |c: &[u8]| dst_buf.extend_from_slice(c),
     );
 
     let mut f =

@@ -89,7 +89,6 @@ pub struct BookReferences(Vec<PostReferences>);
 // strategy for merging in a new reference
 enum MergeStrategy {
     Append,
-    Merge(usize),
     MoveAndMerge(usize, usize),
 }
 
@@ -156,7 +155,6 @@ impl BookReferences {
 
             match refs.merge_strategy(&r1) {
                 Append => refs.0.push(PostReferences::from1(r1)),
-                Merge(i) => refs.0[i].push(r1),
                 MoveAndMerge(i_src, i_dst) => {
                     let p = refs.0.remove(i_src);
                     refs.0.insert(i_dst - 1, p);

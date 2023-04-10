@@ -1,6 +1,3 @@
-// TODO is this required? - mitigate recursion error when running tests
-#![recursion_limit = "1024"]
-
 use bible::{AllReferences, Writer};
 use clap::{Parser, Subcommand};
 use std::{io, path::PathBuf, process::ExitCode};
