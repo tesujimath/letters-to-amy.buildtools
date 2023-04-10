@@ -16,6 +16,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     CreateScriptureIndex,
+    ContextualizeHomeLinks,
 }
 
 fn main() -> ExitCode {
@@ -23,6 +24,7 @@ fn main() -> ExitCode {
 
     match &cli.command {
         Commands::CreateScriptureIndex => create_scripture_index(),
+        Commands::ContextualizeHomeLinks => contextualize_home_links(),
     }
 }
 
@@ -49,6 +51,16 @@ fn create_scripture_index() -> ExitCode {
     let cw = content.section_writer(REF_SECTION).unwrap();
     let mut sw = Writer::new(cw);
     sw.write_references(&refs).unwrap();
+
+    ExitCode::SUCCESS
+}
+
+fn contextualize_home_links() -> ExitCode {
+    let docs = hugo::docs::Docs::new().unwrap();
+
+    for p in docs.pages().unwrap() {
+        println!("{:?}", p)
+    }
 
     ExitCode::SUCCESS
 }
