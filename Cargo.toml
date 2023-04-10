@@ -10,6 +10,7 @@ anyhow = "1.0.69"
 clap = { version = "4.0.32", features = ["derive"]}
 itertools = "0.10.5"
 lazy_static = "1.4.0"
+lol_html = "0.3.3"
 num = "0.4.0"
 ref-cast = "1.0.15"
 regex = "1.7.1"

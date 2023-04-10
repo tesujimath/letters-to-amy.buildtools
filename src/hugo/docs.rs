@@ -10,7 +10,7 @@ pub struct Docs {
     root: PathBuf,
 }
 
-type PageNumber = u8;
+pub type PageNumber = u8;
 
 impl Docs {
     pub fn new() -> Result<Self, &'static str> {
@@ -38,5 +38,10 @@ impl Docs {
             }),
             Err(e) => Some(Err(e)),
         }))
+    }
+
+    pub fn index_path(&self, href: &str) -> PathBuf {
+        let rel_href = href.strip_prefix('/').unwrap_or(href);
+        self.root.join(rel_href).join("index.html")
     }
 }

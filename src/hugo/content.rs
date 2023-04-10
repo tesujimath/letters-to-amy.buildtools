@@ -116,7 +116,7 @@ impl Content {
                 // no page bundle, so walk further
                 let mut entries = (dir
                     .read_dir()
-                    .context(format!("read_dir(\"{}\")", dir.to_string_lossy()))?)
+                    .context(format!("read_dir(\"{}\")", dir.display()))?)
                 .flatten()
                 // sort by name, to provide a defined order of iteration
                 .collect::<Vec<DirEntry>>();
@@ -130,7 +130,7 @@ impl Content {
                         let entry_relpath = entry_path.strip_prefix(&self.root).unwrap();
 
                         let mut f = File::open(entry.path())
-                            .context(format!("open(\"{}\")", entry.path().to_string_lossy()))?;
+                            .context(format!("open(\"{}\")", entry.path().display()))?;
 
                         self.parse(&mut f, entry_relpath, handler)?;
                     }

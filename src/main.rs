@@ -58,9 +58,7 @@ fn create_scripture_index() -> ExitCode {
 fn contextualize_home_links() -> ExitCode {
     let docs = hugo::docs::Docs::new().unwrap();
 
-    for p in docs.pages().unwrap() {
-        println!("{:?}", p)
-    }
+    hugo::home_links::contextualize(&docs).unwrap();
 
     ExitCode::SUCCESS
 }
