@@ -3,11 +3,11 @@
 
 use super::docs::Docs;
 use anyhow::{Context, Result};
-use lol_html::{element, html_content::Element, HtmlRewriter, Settings};
+use lol_html::{element, HtmlRewriter, Settings};
 use std::{
     fs::File,
     io::{Read, Write},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 pub fn contextualize(docs: &Docs) -> Result<()> {
@@ -15,15 +15,11 @@ pub fn contextualize(docs: &Docs) -> Result<()> {
         let (page_number, path) = p;
 
         let page_href = format!("/page/{}/", page_number);
+        let post_hrefs = get_posts_for_page(&path)?;
 
-        println!("{}: {:?}", page_number, &path);
-
-        let page_post_hrefs = get_posts_for_page(&path)?;
-
-        for page_post_href in page_post_hrefs {
-            let src_path = docs.index_path(&page_post_href);
-            let dst_path = PathBuf::from(format!("{}.new", src_path.display()));
-            rewrite_home_link(src_path, dst_path, &page_href)?;
+        for post_href in post_hrefs {
+            let post_path = docs.index_path(&post_href);
+            rewrite_home_link(post_path, &page_href)?;
         }
     }
 
@@ -62,20 +58,19 @@ where
     Ok(post_hrefs)
 }
 
-fn rewrite_home_link<P1, P2>(src_path: P1, dst_path: P2, page_href: &str) -> Result<()>
+fn rewrite_home_link<P>(post_path: P, page_href: &str) -> Result<()>
 where
-    P1: AsRef<Path>,
-    P2: AsRef<Path>,
+    P: AsRef<Path>,
 {
-    let mut f_src =
-        File::open(&src_path).context(format!("open(\"{}\")", src_path.as_ref().display()))?;
-    let mut f_dst =
-        File::create(&dst_path).context(format!("create(\"{}\")", dst_path.as_ref().display()))?;
-
     let mut src_buf = Vec::new();
     let mut dst_buf = Vec::new();
 
-    let href_css_selectors = ["figure.site-avatar", "ol.menu li"];
+    let href_css_selectors = [
+        "figure.site-avatar",
+        "div.site-meta h1.site-name",
+        // leave the memu pointing at home for now
+        //"ol.menu li"
+    ];
 
     let mut rewriter = HtmlRewriter::new(
         Settings {
@@ -97,10 +92,16 @@ where
         |c: &[u8]| dst_buf.extend_from_slice(c), // don't write anything
     );
 
-    f_src.read_to_end(&mut src_buf)?;
+    let mut f =
+        File::open(&post_path).context(format!("open(\"{}\")", post_path.as_ref().display()))?;
+    f.read_to_end(&mut src_buf)?;
 
     rewriter.write(&src_buf)?;
-    f_dst.write_all(&dst_buf)?;
+
+    f = File::create(&post_path)
+        .context(format!("create(\"{}\")", post_path.as_ref().display()))?;
+
+    f.write_all(&dst_buf)?;
 
     Ok(())
 }
