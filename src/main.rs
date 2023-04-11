@@ -45,9 +45,9 @@ fn create_scripture_index() -> ExitCode {
 
     const REF_SECTION: &str = "ref";
 
-    let cw = content.section_writer(REF_SECTION).unwrap();
-    let mut sw = Writer::new(cw);
-    sw.write_references(&refs).unwrap();
+    let sw = content.section_writer(REF_SECTION).unwrap();
+    let mut w = Writer::new(sw);
+    w.write_references(&refs).unwrap();
 
     ExitCode::SUCCESS
 }

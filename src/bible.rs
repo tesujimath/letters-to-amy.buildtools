@@ -1,7 +1,7 @@
 use super::hugo::content::Metadata;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
-pub use extraction::references;
+use extraction::references;
 use itertools::Itertools;
 use std::{
     cmp::{self, Ordering},
@@ -10,7 +10,8 @@ use std::{
     num::ParseIntError,
     str::FromStr,
 };
-pub use tabulation::{BookReferences, BookReferences1, PostReferences, PostReferences1, Writer};
+pub use tabulation::Writer;
+use tabulation::{BookReferences, BookReferences1};
 
 /// integer used for chapter index
 type CInt = u8;
