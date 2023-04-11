@@ -65,7 +65,7 @@ impl Metadata {
 }
 
 pub fn format_href(text: &str, url: &str) -> String {
-    format!("[{}]({{{{<ref \"{}\" >}}}})", text, url)
+    format!("[{}]({{{{<relref \"{}\" >}}}})", text, url)
 }
 
 const CONTENT_DIR: &str = "content";
