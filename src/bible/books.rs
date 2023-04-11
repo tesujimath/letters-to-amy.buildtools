@@ -21,7 +21,7 @@ impl Testament {
         vec![Testament::Old, Testament::New].into_iter()
     }
 
-    pub fn books(&self) -> impl Iterator<Item = &'static str> {
+    pub fn _books(&self) -> impl Iterator<Item = &'static str> {
         book_alias_iter(*self).map(|aliases| (aliases[0]))
     }
 

@@ -4,19 +4,21 @@ use super::*;
 
 #[test]
 fn test_header_and_body() {
-    assert_eq!(header_and_body("abc"), Err(GetHeaderAndBodyErr::NoHeader));
+    assert!(header_and_body("abc").is_err());
 
-    assert_eq!(
-        header_and_body(
-            r###"
+    let result2 = header_and_body(
+        r###"
     +++
     title = "My Title"
     +++
 
     abc
     "###,
-        ),
-        Ok((
+    );
+    assert!(result2.is_ok());
+    assert_eq!(
+        result2.unwrap(),
+        (
             Header {
                 title: Some("My Title".to_string()),
                 description: None,
@@ -25,23 +27,6 @@ fn test_header_and_body() {
 
     abc
     "###
-        ))
+        )
     );
-    /*
-        let (h, b) = header_and_body(
-            r###"+++
-    title: some title
-    date: 2023-02-07
-    +++
-    this is the body
-    "###,
-        );
-        assert_eq!(h.title, "some title");
-        assert_eq!(
-            b,
-            r###"
-    this is the body
-    "###
-        );
-        */
 }

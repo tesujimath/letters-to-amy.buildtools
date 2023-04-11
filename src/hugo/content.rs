@@ -3,11 +3,32 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use std::{
-    fmt,
+    fmt::{self, Display},
     fs::{self, DirEntry, File},
     io::{Read, Write},
     path::{Path, PathBuf},
 };
+
+#[derive(Eq, PartialEq, Debug)]
+pub enum Error {
+    ContentRootNotFound,
+    MissingPostHeader,
+}
+
+impl std::error::Error for Error {}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Self::ContentRootNotFound => write!(
+                f,
+                "{} directory not found, run from repo root directory or a subdirectory",
+                CONTENT_DIR
+            ),
+            Self::MissingPostHeader => write!(f, "missing header in post"),
+        }
+    }
+}
 
 #[derive(Deserialize, PartialEq, Eq, Debug)]
 pub struct Header {
@@ -47,22 +68,24 @@ pub fn format_href(text: &str, url: &str) -> String {
     format!("[{}]({{{{<ref \"{}\" >}}}})", text, url)
 }
 
+const CONTENT_DIR: &str = "content";
+
 pub struct Content {
     root: PathBuf,
 }
 
 impl Content {
-    pub fn new() -> Result<Self, &'static str> {
+    pub fn new() -> Result<Self, Error> {
         let candidate_roots = [
-            Path::new("content").to_owned(),
-            Path::new("..").join("content"),
+            Path::new(CONTENT_DIR).to_owned(),
+            Path::new("..").join(CONTENT_DIR),
         ];
 
         match candidate_roots.iter().find(|path| path.exists()) {
             Some(root) => Ok(Content {
                 root: root.to_path_buf(),
             }),
-            None => Err("content root not found, run from Hugo root or subdirectory of root"),
+            None => Err(Error::ContentRootNotFound),
         }
     }
 
@@ -80,11 +103,11 @@ impl Content {
     {
         let mut content = String::new();
         f.read_to_string(&mut content)
-            .context("reading Hugo content to string")?;
+            .context(format!("{}", relpath.to_string_lossy()))?;
 
         match (
             relpath.to_str(),
-            header_and_body(&content).context("failed to get title and body"),
+            header_and_body(&content).context(format!("{}", relpath.to_string_lossy())),
         ) {
             (Some(relpath), Ok((header, body))) => {
                 let metadata = Metadata::new(format!("/{}", relpath), header);
@@ -146,28 +169,7 @@ impl Content {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
-enum GetHeaderAndBodyErr {
-    NoHeader,
-    TomlError(toml::de::Error),
-}
-
-impl std::error::Error for GetHeaderAndBodyErr {}
-
-impl fmt::Display for GetHeaderAndBodyErr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "GetHeaderAndBodyErr::{}",
-            match self {
-                Self::NoHeader => "NoHeader".to_string(),
-                Self::TomlError(e) => format!("TomlError: {}", e),
-            }
-        )
-    }
-}
-
-fn header_and_body(text: &str) -> Result<(Header, &str), GetHeaderAndBodyErr> {
+fn header_and_body(text: &str) -> Result<(Header, &str)> {
     lazy_static! {
         static ref HEADER_RE: Regex = Regex::new(r"(?s)\+\+\+(.*)(\+\+\+)").unwrap();
     }
@@ -177,10 +179,10 @@ fn header_and_body(text: &str) -> Result<(Header, &str), GetHeaderAndBodyErr> {
             let body = &text[cap.get(2).unwrap().end()..];
             match toml::from_str::<Header>(&cap[1]) {
                 Ok(header) => Ok((header, body)),
-                Err(e) => Err(GetHeaderAndBodyErr::TomlError(e)),
+                Err(e) => Err(e.into()),
             }
         }
-        None => Err(GetHeaderAndBodyErr::NoHeader),
+        None => Err(Error::MissingPostHeader.into()),
     }
 }
 
@@ -235,7 +237,7 @@ impl ContentWriter {
         let path = self.section_dir.join(format!("{}.md", slug));
         let url = format!("/{}/{}", self.section, slug);
 
-        let mut f = File::create(path).unwrap();
+        let mut f = File::create(path)?;
         f.write_all(
             // TODO use YAML serializer
             format!(

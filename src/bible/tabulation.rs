@@ -1,6 +1,7 @@
 use super::{books::Testament, AllReferences, ChapterVerses, ChaptersVerses, References};
 use crate::hugo::content::{format_href, write_table, ContentWriter, Header, Metadata};
 use crate::util::insert_in_order;
+use anyhow::Result;
 use itertools::Itertools;
 use std::{
     cmp::Ordering,
@@ -151,7 +152,7 @@ impl BookReferences {
 
     fn from_separated(refs1: BookReferences1) -> BookReferences {
         let mut it1 = refs1.0.into_iter();
-        let mut refs = BookReferences::new(PostReferences::from(it1.by_ref().next().unwrap()));
+        let mut refs = BookReferences::new(PostReferences::from(it1.by_ref().next().unwrap())); // never empty
         for r1 in it1 {
             use MergeStrategy::*;
 
@@ -178,6 +179,17 @@ impl AllReferences {
         }
     }
 
+    pub fn tabulate(&mut self, cw: ContentWriter) -> Result<()> {
+        self.coelesce();
+        // useful for diagnostics:
+        //self.dump_repeats(io::stdout())?;
+
+        let mut w = Writer::new(cw);
+        w.write_references(self)?;
+
+        Ok(())
+    }
+
     // insert the post references separately and return a stable reference to its metadata
     pub fn insert(&mut self, metadata: Metadata, refs: References) -> &Metadata {
         self.metadata.push(metadata);
@@ -198,7 +210,7 @@ impl AllReferences {
             }
         }
 
-        self.metadata.last().unwrap()
+        self.metadata.last().unwrap() // always exists
     }
 
     pub fn coelesce(&mut self) {
@@ -209,11 +221,11 @@ impl AllReferences {
         );
     }
 
-    pub fn dump_repeats(&self, mut w: impl Write) -> io::Result<()> {
+    pub fn _dump_repeats(&self, mut w: impl Write) -> io::Result<()> {
         for testament in Testament::all() {
             w.write_all(format!("{}\n", testament.name()).as_bytes())?;
 
-            for book in testament.books() {
+            for book in testament._books() {
                 if let Some(refs) = self.refs_by_book.get(book) {
                     let mut post_count = HashMap::<usize, u8>::new();
                     for r in refs.0.iter() {

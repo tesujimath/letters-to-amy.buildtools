@@ -1,6 +1,11 @@
-use bible::{AllReferences, Writer};
+use anyhow::Result;
+use bible::AllReferences;
 use clap::{Parser, Subcommand};
-use std::{io, path::PathBuf, process::ExitCode};
+use std::{
+    io::{stderr, Write},
+    path::PathBuf,
+    process::ExitCode,
+};
 
 #[derive(Parser)]
 struct Cli {
@@ -19,45 +24,45 @@ enum Commands {
 fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    match &cli.command {
+    let result = match &cli.command {
         Commands::CreateScriptureIndex => create_scripture_index(),
         Commands::ContextualizeHomeLinks => contextualize_home_links(),
+    };
+
+    if let Err(e) = result {
+        let _ = writeln!(stderr(), "error: {:#}", e);
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     }
 }
 
-fn create_scripture_index() -> ExitCode {
-    let content = hugo::content::Content::new().unwrap();
+fn create_scripture_index() -> Result<()> {
+    let content = hugo::content::Content::new()?;
     let mut refs = AllReferences::new();
 
-    if let Err(e) = content.walk_posts(|metadata, body| {
+    content.walk_posts(|metadata, body| {
         let warnings = refs.extract_from_post(metadata, body);
 
         for w in warnings {
             println!("WARN: {}", &w);
         }
-    }) {
-        println!("failed: {:?}", e);
-        return ExitCode::FAILURE;
-    }
-
-    refs.coelesce();
-    refs.dump_repeats(io::stdout()).unwrap();
+    })?;
 
     const REF_SECTION: &str = "ref";
+    let cw = content.section_writer(REF_SECTION)?;
 
-    let sw = content.section_writer(REF_SECTION).unwrap();
-    let mut w = Writer::new(sw);
-    w.write_references(&refs).unwrap();
+    refs.tabulate(cw)?;
 
-    ExitCode::SUCCESS
+    Ok(())
 }
 
-fn contextualize_home_links() -> ExitCode {
-    let docs = hugo::docs::Docs::new().unwrap();
+fn contextualize_home_links() -> Result<()> {
+    let docs = hugo::docs::Docs::new()?;
 
-    hugo::home_links::contextualize(&docs).unwrap();
+    hugo::home_links::contextualize(&docs)?;
 
-    ExitCode::SUCCESS
+    Ok(())
 }
 
 mod bible;
