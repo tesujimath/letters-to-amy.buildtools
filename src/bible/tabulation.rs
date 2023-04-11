@@ -46,15 +46,17 @@ pub struct PostReferences {
 }
 
 impl PostReferences {
-    fn from1(refs1: PostReferences1) -> Self {
+    fn push(&mut self, refs1: PostReferences1) {
+        self.cvs.0.push(refs1.cv);
+    }
+}
+
+impl From<PostReferences1> for PostReferences {
+    fn from(refs1: PostReferences1) -> Self {
         Self {
             post_index: refs1.post_index,
             cvs: ChaptersVerses::new(refs1.cv),
         }
-    }
-
-    fn push(&mut self, refs1: PostReferences1) {
-        self.cvs.0.push(refs1.cv);
     }
 }
 
@@ -149,12 +151,12 @@ impl BookReferences {
 
     fn from_separated(refs1: BookReferences1) -> BookReferences {
         let mut it1 = refs1.0.into_iter();
-        let mut refs = BookReferences::new(PostReferences::from1(it1.by_ref().next().unwrap()));
+        let mut refs = BookReferences::new(PostReferences::from(it1.by_ref().next().unwrap()));
         for r1 in it1 {
             use MergeStrategy::*;
 
             match refs.merge_strategy(&r1) {
-                Append => refs.0.push(PostReferences::from1(r1)),
+                Append => refs.0.push(PostReferences::from(r1)),
                 MoveAndMerge(i_src, i_dst) => {
                     let p = refs.0.remove(i_src);
                     refs.0.insert(i_dst - 1, p);
