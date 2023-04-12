@@ -38,7 +38,7 @@ fn main() -> ExitCode {
 }
 
 fn create_scripture_index() -> Result<()> {
-    let content = hugo::content::Content::new()?;
+    let content = hugo::Content::new()?;
     let mut refs = AllReferences::new();
 
     content.walk_posts(|metadata, body| {
@@ -52,15 +52,15 @@ fn create_scripture_index() -> Result<()> {
     const REF_SECTION: &str = "ref";
     let cw = content.section_writer(REF_SECTION)?;
 
-    refs.tabulate(cw)?;
+    refs.tabulate(Box::new(cw))?;
 
     Ok(())
 }
 
 fn contextualize_home_links() -> Result<()> {
-    let docs = hugo::docs::Docs::new()?;
+    let docs = hugo::Docs::new()?;
 
-    hugo::home_links::contextualize(&docs)?;
+    hugo::contextualize_home_links(&docs)?;
 
     Ok(())
 }

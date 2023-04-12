@@ -1,4 +1,4 @@
-use super::hugo::content::Metadata;
+use super::hugo::Metadata;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
 use extraction::references;

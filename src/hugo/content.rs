@@ -210,8 +210,10 @@ impl ContentWriter {
             branch_yaml_header,
         })
     }
+}
 
-    pub fn create_branch(&mut self) -> anyhow::Result<File> {
+impl super::Create for ContentWriter {
+    fn create_branch(&mut self) -> anyhow::Result<File> {
         let index_path = self.section_dir.join("_index.md");
         let mut f = File::create(index_path)?;
 
@@ -228,7 +230,7 @@ impl ContentWriter {
     }
 
     // TODO return URL type not String
-    pub fn create_leaf(&mut self, header: &Header) -> anyhow::Result<(File, String)> {
+    fn create_leaf(&mut self, header: &Header) -> anyhow::Result<(File, String)> {
         let unknown_title = "Unknown".to_string();
         let unknown_description = "".to_string();
         let title = header.title.as_ref().unwrap_or(&unknown_title);

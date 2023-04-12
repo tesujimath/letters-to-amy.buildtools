@@ -1,5 +1,5 @@
 use super::{books::Testament, AllReferences, ChapterVerses, ChaptersVerses, References};
-use crate::hugo::content::{format_href, write_table, ContentWriter, Header, Metadata};
+use crate::hugo::{format_href, write_table, Create, Header, Metadata};
 use crate::util::insert_in_order;
 use anyhow::Result;
 use itertools::Itertools;
@@ -179,12 +179,12 @@ impl AllReferences {
         }
     }
 
-    pub fn tabulate(&mut self, cw: ContentWriter) -> Result<()> {
+    pub fn tabulate(&mut self, c: Box<dyn Create>) -> Result<()> {
         self.coelesce();
         // useful for diagnostics:
         //self.dump_repeats(io::stdout())?;
 
-        let mut w = Writer::new(cw);
+        let mut w = Writer::new(c);
         w.write_references(self)?;
 
         Ok(())
@@ -271,12 +271,12 @@ impl AllReferences {
 }
 
 pub struct Writer {
-    w: ContentWriter,
+    c: Box<dyn Create>,
 }
 
 impl Writer {
-    pub fn new(w: ContentWriter) -> Self {
-        Writer { w }
+    pub fn new(c: Box<dyn Create>) -> Self {
+        Writer { c }
     }
 
     const BOOK_REFS_DESCRIPTION: &str = "Scripture index";
@@ -289,7 +289,7 @@ impl Writer {
         posts: &AllReferences,
     ) -> anyhow::Result<String> {
         let h = Header::new(book, Self::BOOK_REFS_DESCRIPTION);
-        self.w.create_leaf(&h).and_then(|(mut f, url)| {
+        self.c.create_leaf(&h).and_then(|(mut f, url)| {
             f.write_all("\n".as_bytes())?;
 
             let heading = vec!["", ""];
@@ -340,7 +340,7 @@ impl Writer {
     }
 
     pub fn write_references(&mut self, posts: &AllReferences) -> anyhow::Result<()> {
-        self.w.create_branch().and_then(|f| {
+        self.c.create_branch().and_then(|f| {
             for testament in Testament::all() {
                 let mut hrefs = Vec::new();
 
