@@ -78,6 +78,7 @@ impl PartialOrd for PostReferences {
 }
 
 // separated references to a single book, non-empty
+#[derive(Debug)]
 pub struct BookReferences1(Vec<PostReferences1>);
 
 impl BookReferences1 {
@@ -87,6 +88,7 @@ impl BookReferences1 {
 }
 
 // all the references to a single book, non-empty
+#[derive(Debug)]
 pub struct BookReferences(Vec<PostReferences>);
 
 // strategy for merging in a new reference

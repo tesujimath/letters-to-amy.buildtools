@@ -70,6 +70,7 @@ pub fn format_href(text: &str, url: &str) -> String {
 
 const CONTENT_DIR: &str = "content";
 
+#[derive(Debug)]
 pub struct Content {
     root: PathBuf,
 }
@@ -186,6 +187,7 @@ fn header_and_body(text: &str) -> Result<(Header, &str)> {
     }
 }
 
+#[derive(Debug)]
 pub struct ContentWriter {
     section: &'static str,
     section_dir: PathBuf,

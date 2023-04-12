@@ -299,6 +299,7 @@ impl IntoIterator for References {
     }
 }
 
+#[derive(Debug)]
 pub struct AllReferences {
     metadata: Vec<Metadata>,
     separated_refs_by_book: HashMap<&'static str, BookReferences1>,
