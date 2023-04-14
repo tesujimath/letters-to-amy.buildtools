@@ -4,15 +4,17 @@ use regex::Regex;
 use serde::Deserialize;
 use std::{
     fmt::{self, Display},
-    fs::{self, DirEntry, File},
+    fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
 };
+use walkdir::WalkDir;
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum Error {
     ContentRootNotFound,
     MissingPostHeader,
+    NonUnicodePath,
 }
 
 impl std::error::Error for Error {}
@@ -26,6 +28,7 @@ impl Display for Error {
                 CONTENT_DIR
             ),
             Self::MissingPostHeader => write!(f, "missing header in post"),
+            Self::NonUnicodePath => write!(f, "non-unicode path"),
         }
     }
 }
@@ -70,6 +73,9 @@ pub fn format_href(text: &str, url: &str) -> String {
 
 const CONTENT_DIR: &str = "content";
 
+/// where Hugo posts live
+pub const POSTS_SECTION: &str = "post";
+
 #[derive(Debug)]
 pub struct Content {
     root: PathBuf,
@@ -90,83 +96,96 @@ impl Content {
         }
     }
 
-    pub fn walk_posts<F>(&self, mut handler: F) -> Result<()>
+    /// an iterator over the extraction of each page in the section
+    pub fn section<T, F>(&self, section: &str, extractor: F) -> IntoIter<T, F>
     where
-        F: FnMut(Metadata, &str),
+        F: Fn(&str) -> T,
     {
-        let posts_path = self.root.join("post");
-        self.walk(&posts_path, &mut handler)
-    }
-
-    fn parse<F>(&self, f: &mut File, relpath: &Path, handler: &mut F) -> Result<()>
-    where
-        F: FnMut(Metadata, &str),
-    {
-        let mut content = String::new();
-        f.read_to_string(&mut content)
-            .context(format!("{}", relpath.to_string_lossy()))?;
-
-        match (
-            relpath.to_str(),
-            header_and_body(&content).context(format!("{}", relpath.to_string_lossy())),
-        ) {
-            (Some(relpath), Ok((header, body))) => {
-                let metadata = Metadata::new(format!("/{}", relpath), header);
-
-                handler(metadata, body);
-
-                Ok(())
-            }
-            (None, _) => {
-                println!("WARNING: skipping non-unicode path {:?}", relpath);
-                Ok(())
-            }
-            (_, Err(e)) => Err(e),
+        IntoIter {
+            root: self.root.clone(),
+            it: WalkDir::new(self.root.join(section))
+                .sort_by_file_name()
+                .into_iter(),
+            extractor,
         }
-    }
-
-    fn walk<F>(&self, dir: &Path, handler: &mut F) -> Result<()>
-    where
-        F: FnMut(Metadata, &str),
-    {
-        let index_path = dir.join("index.md");
-        match File::open(&index_path) {
-            Ok(ref mut f) => {
-                // page bundle, so stop here
-                let index_relpath = index_path.strip_prefix(&self.root).unwrap();
-                self.parse(f, index_relpath, handler)?
-            }
-            Err(_) => {
-                // no page bundle, so walk further
-                let mut entries = (dir
-                    .read_dir()
-                    .context(format!("read_dir(\"{}\")", dir.display()))?)
-                .flatten()
-                // sort by name, to provide a defined order of iteration
-                .collect::<Vec<DirEntry>>();
-                entries.sort_by_key(|e| e.file_name());
-                for entry in entries {
-                    let file_type = entry.file_type()?;
-                    if file_type.is_dir() {
-                        self.walk(&entry.path(), handler)?;
-                    } else if file_type.is_file() {
-                        let entry_path = entry.path();
-                        let entry_relpath = entry_path.strip_prefix(&self.root).unwrap();
-
-                        let mut f = File::open(entry.path())
-                            .context(format!("open(\"{}\")", entry.path().display()))?;
-
-                        self.parse(&mut f, entry_relpath, handler)?;
-                    }
-                }
-            }
-        }
-
-        Ok(())
     }
 
     pub fn section_writer(&self, section: &'static str) -> anyhow::Result<ContentWriter> {
         ContentWriter::new(&self.root, section)
+    }
+}
+
+pub struct IntoIter<T, F>
+where
+    F: Fn(&str) -> T,
+{
+    root: PathBuf,
+    it: walkdir::IntoIter,
+    extractor: F,
+}
+
+impl<T, F> IntoIter<T, F>
+where
+    F: Fn(&str) -> T,
+{
+    fn parse(&self, f: &mut File, relpath: &Path) -> Result<(Metadata, T)> {
+        match relpath.to_str() {
+            None => Err(Error::NonUnicodePath.into()),
+            Some(relpath) => {
+                let mut content = String::new();
+                f.read_to_string(&mut content).context(relpath.to_owned())?;
+
+                let (header, body) = header_and_body(&content).context(relpath.to_owned())?;
+                let metadata = Metadata::new(format!("/{}", relpath), header);
+
+                let extracted = (self.extractor)(body);
+
+                Ok((metadata, extracted))
+            }
+        }
+    }
+}
+
+impl<T, F> Iterator for IntoIter<T, F>
+where
+    F: Fn(&str) -> T,
+{
+    type Item = Result<(Metadata, T)>;
+
+    fn next(&mut self) -> Option<Result<(Metadata, T)>> {
+        loop {
+            match self.it.next() {
+                None => break None,
+                Some(Err(err)) => break Some(Err(err.into())),
+                Some(Ok(entry)) => {
+                    if entry.file_type().is_dir() {
+                        let index_path = entry.path().join("index.md");
+                        match File::open(&index_path) {
+                            Ok(ref mut f) => {
+                                // page bundle, so stop here
+                                self.it.skip_current_dir();
+                                let index_relpath = index_path.strip_prefix(&self.root).unwrap();
+                                break Some(self.parse(f, index_relpath));
+                            }
+                            Err(_) => continue,
+                        }
+                    } else {
+                        let entry_relpath = entry.path().strip_prefix(&self.root).unwrap();
+
+                        match File::open(entry.path()) {
+                            Ok(ref mut f) => {
+                                let result = self.parse(f, entry_relpath);
+                                break Some(result);
+                            }
+                            Err(e) => {
+                                break Some(Err(anyhow::Error::from(e)
+                                    .context(format!("{:?}", entry_relpath.display()))));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

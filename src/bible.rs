@@ -1,7 +1,6 @@
 use super::hugo::Metadata;
 use super::util::slice_cmp;
 use books::{book, is_single_chapter_book};
-use extraction::references;
 use itertools::Itertools;
 use std::{
     cmp::{self, Ordering},
@@ -306,20 +305,8 @@ pub struct AllReferences {
     refs_by_book: HashMap<&'static str, BookReferences>,
 }
 
-impl AllReferences {
-    // extract bible references for a post and return any warnings
-    pub fn extract_from_post(&mut self, post_metadata: Metadata, post_body: &str) -> Vec<String> {
-        let (refs, warnings) = references(post_body);
-
-        let m = self.insert(post_metadata, refs);
-
-        let annotated_warnings = warnings.into_iter().map(|w| format!("{}: {}", &m.url, w));
-
-        annotated_warnings.collect()
-    }
-}
-
 mod books;
 mod extraction;
+pub use extraction::references;
 mod tabulation;
 mod tests;

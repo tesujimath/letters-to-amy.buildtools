@@ -9,7 +9,7 @@ pub trait Create {
 }
 
 mod content;
-pub use content::{format_href, write_table, Content, Header, Metadata};
+pub use content::{format_href, write_table, Content, Header, Metadata, POSTS_SECTION};
 
 mod docs;
 pub use docs::Docs;

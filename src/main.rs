@@ -41,13 +41,21 @@ fn create_scripture_index() -> Result<()> {
     let content = hugo::Content::new()?;
     let mut refs = AllReferences::new();
 
-    content.walk_posts(|metadata, body| {
-        let warnings = refs.extract_from_post(metadata, body);
+    for r in content.section(hugo::POSTS_SECTION, bible::references) {
+        match r {
+            Ok((post_metadata, (post_refs, warnings))) => {
+                let annotated_warnings = warnings
+                    .into_iter()
+                    .map(|w| format!("{}: {}", &post_metadata.url, w));
+                for w in annotated_warnings {
+                    println!("WARN: {}", &w);
+                }
 
-        for w in warnings {
-            println!("WARN: {}", &w);
+                refs.insert(post_metadata, post_refs);
+            }
+            Err(e) => println!("{:#}", e),
         }
-    })?;
+    }
 
     const REF_SECTION: &str = "ref";
     let cw = content.section_writer(REF_SECTION)?;
