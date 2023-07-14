@@ -50,13 +50,14 @@ impl Header {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Metadata {
+    pub path: PathBuf,
     pub url: String,
     pub header: Header,
 }
 
 impl Metadata {
-    fn new(url: String, header: Header) -> Self {
-        Metadata { url, header }
+    fn new(path: PathBuf, url: String, header: Header) -> Self {
+        Metadata { path, url, header }
     }
 
     pub fn format_href(&self) -> String {
@@ -128,7 +129,7 @@ impl<T, F> IntoIter<T, F>
 where
     F: Fn(&str) -> T,
 {
-    fn parse(&self, f: &mut File, relpath: &Path) -> Result<(Metadata, T)> {
+    fn parse(&self, f: &mut File, path: &Path, relpath: &Path) -> Result<(Metadata, T)> {
         match relpath.to_str() {
             None => Err(Error::NonUnicodePath.into()),
             Some(relpath) => {
@@ -136,7 +137,7 @@ where
                 f.read_to_string(&mut content).context(relpath.to_owned())?;
 
                 let (header, body) = header_and_body(&content).context(relpath.to_owned())?;
-                let metadata = Metadata::new(format!("/{}", relpath), header);
+                let metadata = Metadata::new(path.to_path_buf(), format!("/{}", relpath), header);
 
                 let extracted = (self.extractor)(body);
 
@@ -165,16 +166,17 @@ where
                                 // page bundle, so stop here
                                 self.it.skip_current_dir();
                                 let index_relpath = index_path.strip_prefix(&self.root).unwrap();
-                                break Some(self.parse(f, index_relpath));
+                                break Some(self.parse(f, &index_path, index_relpath));
                             }
                             Err(_) => continue,
                         }
                     } else {
-                        let entry_relpath = entry.path().strip_prefix(&self.root).unwrap();
+                        let entry_path = entry.path();
+                        let entry_relpath = entry_path.strip_prefix(&self.root).unwrap();
 
                         match File::open(entry.path()) {
                             Ok(ref mut f) => {
-                                let result = self.parse(f, entry_relpath);
+                                let result = self.parse(f, entry_path, entry_relpath);
                                 break Some(result);
                             }
                             Err(e) => {
