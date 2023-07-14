@@ -100,7 +100,7 @@ impl Content {
     /// an iterator over the extraction of each page in the section
     pub fn section<T, F>(&self, section: &str, extractor: F) -> IntoIter<T, F>
     where
-        F: Fn(&str) -> T,
+        F: Fn(&str, &str) -> T,
     {
         IntoIter {
             root: self.root.clone(),
@@ -118,7 +118,7 @@ impl Content {
 
 pub struct IntoIter<T, F>
 where
-    F: Fn(&str) -> T,
+    F: Fn(&str, &str) -> T,
 {
     root: PathBuf,
     it: walkdir::IntoIter,
@@ -127,7 +127,7 @@ where
 
 impl<T, F> IntoIter<T, F>
 where
-    F: Fn(&str) -> T,
+    F: Fn(&str, &str) -> T,
 {
     fn parse(&self, f: &mut File, path: &Path, relpath: &Path) -> Result<(Metadata, T)> {
         match relpath.to_str() {
@@ -136,10 +136,11 @@ where
                 let mut content = String::new();
                 f.read_to_string(&mut content).context(relpath.to_owned())?;
 
-                let (header, body) = header_and_body(&content).context(relpath.to_owned())?;
+                let (header, raw_header, body) =
+                    header_and_body(&content).context(relpath.to_owned())?;
                 let metadata = Metadata::new(path.to_path_buf(), format!("/{}", relpath), header);
 
-                let extracted = (self.extractor)(body);
+                let extracted = (self.extractor)(raw_header, body);
 
                 Ok((metadata, extracted))
             }
@@ -149,7 +150,7 @@ where
 
 impl<T, F> Iterator for IntoIter<T, F>
 where
-    F: Fn(&str) -> T,
+    F: Fn(&str, &str) -> T,
 {
     type Item = Result<(Metadata, T)>;
 
@@ -191,7 +192,7 @@ where
     }
 }
 
-fn header_and_body(text: &str) -> Result<(Header, &str)> {
+fn header_and_body(text: &str) -> Result<(Header, &str, &str)> {
     lazy_static! {
         static ref HEADER_RE: Regex = Regex::new(r"(?s)\+\+\+(.*)(\+\+\+)").unwrap();
     }
@@ -199,8 +200,9 @@ fn header_and_body(text: &str) -> Result<(Header, &str)> {
     match HEADER_RE.captures(text) {
         Some(cap) => {
             let body = &text[cap.get(2).unwrap().end()..];
+            let raw_header = &text[..cap.get(2).unwrap().end()];
             match toml::from_str::<Header>(&cap[1]) {
-                Ok(header) => Ok((header, body)),
+                Ok(header) => Ok((header, raw_header, body)),
                 Err(e) => Err(e.into()),
             }
         }

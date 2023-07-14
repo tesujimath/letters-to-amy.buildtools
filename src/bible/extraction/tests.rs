@@ -564,7 +564,7 @@ And Peter remembered the saying of the Lord, how he had said to him, “Before t
 // ("v9, 10", "Psalms 46:9-10"),
 // ("v9,", "Psalms 27:9"),
 fn test_references(src: &str, expected: &str) {
-    let (refs, warnings) = references(src);
+    let (refs, warnings) = references("", src);
     assert!(warnings.is_empty(), "{}", src);
     assert!(refs.0.len() == 1, "{}", src);
     let book = *(refs.0.keys().next().unwrap());

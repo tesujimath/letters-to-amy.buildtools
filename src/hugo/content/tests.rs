@@ -24,6 +24,10 @@ fn test_header_and_body() {
                 description: None,
             },
             r###"
+    +++
+    title = "My Title"
+    +++"###,
+            r###"
 
     abc
     "###

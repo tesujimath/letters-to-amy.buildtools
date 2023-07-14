@@ -190,7 +190,7 @@ fn verses(text: &str) -> VSpans {
         .collect::<VSpans>()
 }
 
-pub fn references(text: &str) -> (References, Vec<String>) {
+pub fn references(_raw_header: &str, text: &str) -> (References, Vec<String>) {
     lazy_static! {
         // 1. book chapter, which we use for later context
         // 2. book chapter:verses, which we extract, and store the context
