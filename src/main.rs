@@ -2,6 +2,7 @@ use anyhow::Result;
 use bible::AllReferences;
 use clap::{Parser, Subcommand};
 use std::{
+    fs::File,
     io::{stderr, Write},
     path::PathBuf,
     process::ExitCode,
@@ -18,6 +19,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     CreateScriptureIndex,
+    CreateScriptureIndexLinks,
     ContextualizeHomeLinks,
 }
 
@@ -26,6 +28,7 @@ fn main() -> ExitCode {
 
     let result = match &cli.command {
         Commands::CreateScriptureIndex => create_scripture_index(),
+        Commands::CreateScriptureIndexLinks => create_scripture_index_links(),
         Commands::ContextualizeHomeLinks => contextualize_home_links(),
     };
 
@@ -61,6 +64,25 @@ fn create_scripture_index() -> Result<()> {
     let cw = content.section_writer(REF_SECTION)?;
 
     refs.tabulate(Box::new(cw))?;
+
+    Ok(())
+}
+
+fn create_scripture_index_links() -> Result<()> {
+    let content = hugo::Content::new()?;
+
+    for r in content.section(hugo::POSTS_SECTION, bible::with_index_links) {
+        match r {
+            Ok((post_metadata, post_content)) => {
+                if let Some(post_content) = post_content {
+                    let mut f = File::create(&post_metadata.path)?;
+                    println!("updating {}", post_metadata.path.to_str().unwrap());
+                    f.write_all(post_content.as_bytes())?;
+                }
+            }
+            Err(e) => println!("{:#}", e),
+        }
+    }
 
     Ok(())
 }

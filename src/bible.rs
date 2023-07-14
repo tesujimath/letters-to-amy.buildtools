@@ -308,5 +308,7 @@ pub struct AllReferences {
 mod books;
 mod extraction;
 pub use extraction::references;
+mod index_links;
+pub use index_links::with_index_links;
 mod tabulation;
 mod tests;
