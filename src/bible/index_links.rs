@@ -6,51 +6,30 @@ use regex::Regex;
 
 /// Return a potentially edited copy of the content with added index links
 pub fn with_index_links(raw_header: &str, text: &str) -> Option<String> {
-    lazy_static! {
-        static ref CONTAINER_RE: Regex =
-            Regex::new(r"\{\{<\s*quote\s*([^>]*)>}}|\(\s*([^)]*)\)").unwrap();
-
-        static ref BOOK_RE: Regex =
-            //            prefix     book
-            Regex::new(r"([1-3]?)\s*([A-Z][[:alpha:]]+)").unwrap();
-    }
-
     let mut segments = vec![Cow::Borrowed(raw_header)];
     let mut done = 0_usize;
     let mut updated = false;
 
-    for (span, container) in containers(text) {
-        use Container::*;
-
+    for (span, mut quote) in quotes(text) {
         segments.push(Cow::Borrowed(&text[done..span.start]));
         done = span.start;
 
-        match container {
-            Quoted(mut fields) => {
-                if let Some(source) = fields.get("source") {
-                    if let Some(book) = book(source) {
-                        let url = format!("/ref/{}", slug::slugify(book));
-                        if match fields.get("url") {
-                            Some(original_url) => url != *original_url,
-                            None => true,
-                        } {
-                            fields.insert("url", &url);
-                            segments.push(Cow::Owned(Quoted(fields).to_string()));
-                            done = span.end;
-                            updated = true;
-                        }
-                    }
-                }
-            }
-
-            Bracketed(bracketed_text) => {
-                if let Some(_book) = book(bracketed_text) {
-                    // decided not to put references in these for now
-                    println!("WARNING: skipping ({})", bracketed_text);
+        if let Some(source) = quote.source() {
+            if let Some(book) = book(source) {
+                let url = format!("/ref/{}", slug::slugify(book));
+                if match quote.url() {
+                    Some(original_url) => url != *original_url,
+                    None => true,
+                } {
+                    quote.set_url(&url);
+                    segments.push(Cow::Owned(format!("{}", &quote)));
+                    done = span.end;
+                    updated = true;
                 }
             }
         }
     }
+
     segments.push(Cow::Borrowed(&text[done..]));
 
     // only return string if we changed anything
@@ -76,64 +55,44 @@ fn book(text: &str) -> Option<&'static str> {
     })
 }
 
-enum Container<'a> {
-    Bracketed(&'a str),
-    Quoted(BTreeMap<&'a str, &'a str>),
-}
-
-impl<'a> Display for Container<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        use Container::*;
-
-        match self {
-            Bracketed(bracketed_text) => write!(f, "({})", bracketed_text),
-            Quoted(fields) => {
-                write!(f, "{{{{< quote")?;
-                for (k, v) in fields {
-                    write!(f, r#" {}="{}""#, k, v)?;
-                }
-                write!(f, " >}}}}")
-            }
-        }
-    }
-}
-
-fn containers(text: &str) -> impl Iterator<Item = (Range<usize>, Container)> {
+fn quotes(text: &str) -> impl Iterator<Item = (Range<usize>, Quote)> {
     lazy_static! {
-        static ref CONTAINER_RE: Regex =
-            Regex::new(r"\{\{<\s*quote\s*([^>]*)>}}|\(\s*([^)]*)\)").unwrap();
-
-        static ref BOOK_RE: Regex =
-            //            prefix     book
-            Regex::new(r"([1-3]?)\s*([A-Z][[:alpha:]]+)").unwrap();
-    }
-
-    CONTAINER_RE.captures_iter(text).map(|c| {
-        if c.get(1).is_some() {
-            // quote
-            (
-                c.get(0).unwrap().range(),
-                Container::Quoted(fields(c.get(1).unwrap().as_str())),
-            )
-        } else {
-            (
-                c.get(0).unwrap().range(),
-                Container::Bracketed(c.get(2).unwrap().as_str()),
-            )
-        }
-    })
-}
-
-fn fields(text: &str) -> BTreeMap<&str, &str> {
-    lazy_static! {
+        static ref QUOTE_RE: Regex = Regex::new(r"\{\{<\s*quote\s*([^>]*)>}}").unwrap();
         static ref FIELDS_RE: Regex = Regex::new(r#"([a-z]+)="([^"]*)""#).unwrap();
     }
 
-    let mut fields = BTreeMap::new();
+    QUOTE_RE.captures_iter(text).map(|c| {
+        let mut fields = BTreeMap::new();
 
-    for cap in FIELDS_RE.captures_iter(text) {
-        fields.insert(cap.get(1).unwrap().as_str(), cap.get(2).unwrap().as_str());
+        for cap in FIELDS_RE.captures_iter(c.get(1).unwrap().as_str()) {
+            fields.insert(cap.get(1).unwrap().as_str(), cap.get(2).unwrap().as_str());
+        }
+        (c.get(0).unwrap().range(), Quote(fields))
+    })
+}
+
+struct Quote<'a>(BTreeMap<&'a str, &'a str>);
+
+impl<'a> Quote<'a> {
+    fn source(&self) -> Option<&str> {
+        self.0.get("source").copied()
     }
 
-    fields
+    fn url(&self) -> Option<&str> {
+        self.0.get("url").copied()
+    }
+
+    fn set_url(&mut self, value: &'a str) {
+        self.0.insert("url", value);
+    }
+}
+
+impl<'a> Display for Quote<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{{{{< quote")?;
+        for (k, v) in &self.0 {
+            write!(f, r#" {}="{}""#, k, v)?;
+        }
+        write!(f, " >}}}}")
+    }
 }
