@@ -18,18 +18,25 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    CreateScriptureIndex,
+    CreateScriptureIndex {
+        #[arg(long)]
+        with_sequence_numbers: bool,
+    },
     CreateScriptureIndexLinks,
     ContextualizeHomeLinks,
 }
 
 fn main() -> ExitCode {
+    use Commands::*;
+
     let cli = Cli::parse();
 
     let result = match &cli.command {
-        Commands::CreateScriptureIndex => create_scripture_index(),
-        Commands::CreateScriptureIndexLinks => create_scripture_index_links(),
-        Commands::ContextualizeHomeLinks => contextualize_home_links(),
+        CreateScriptureIndex {
+            with_sequence_numbers,
+        } => create_scripture_index(*with_sequence_numbers),
+        CreateScriptureIndexLinks => create_scripture_index_links(),
+        ContextualizeHomeLinks => contextualize_home_links(),
     };
 
     if let Err(e) = result {
@@ -40,7 +47,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn create_scripture_index() -> Result<()> {
+fn create_scripture_index(with_sequence_numbers: bool) -> Result<()> {
     let content = hugo::Content::new()?;
     let mut refs = AllReferences::new();
 
@@ -63,7 +70,7 @@ fn create_scripture_index() -> Result<()> {
     const REF_SECTION: &str = "ref";
     let cw = content.section_writer(REF_SECTION)?;
 
-    refs.tabulate(Box::new(cw))?;
+    refs.tabulate(Box::new(cw), with_sequence_numbers)?;
 
     Ok(())
 }

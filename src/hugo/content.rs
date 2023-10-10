@@ -37,6 +37,7 @@ impl Display for Error {
 pub struct Header {
     pub title: Option<String>,
     pub description: Option<String>,
+    pub date: Option<String>,
 }
 
 impl Header {
@@ -44,6 +45,7 @@ impl Header {
         Header {
             title: Some(title.to_owned()),
             description: Some(description.to_owned()),
+            date: None,
         }
     }
 }
@@ -60,11 +62,15 @@ impl Metadata {
         Metadata { path, url, header }
     }
 
-    pub fn format_href(&self) -> String {
-        format_href(
-            self.header.title.as_ref().unwrap_or(&"Unknown".to_string()),
-            &self.url,
-        )
+    pub fn format_href(&self, sequence_number: &Option<usize>) -> String {
+        let title = self.header.title.as_deref().unwrap_or("Unknown");
+        match sequence_number {
+            Some(sequence_number) => format_href(
+                format!("{} #{}", title, sequence_number).as_str(),
+                &self.url,
+            ),
+            None => format_href(title, &self.url),
+        }
     }
 }
 

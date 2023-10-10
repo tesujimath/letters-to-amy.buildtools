@@ -4,7 +4,7 @@ use books::{book, is_single_chapter_book};
 use itertools::Itertools;
 use std::{
     cmp::{self, Ordering},
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fmt::{self, Display, Formatter},
     num::ParseIntError,
     str::FromStr,
@@ -301,6 +301,8 @@ impl IntoIterator for References {
 #[derive(Debug)]
 pub struct AllReferences {
     metadata: Vec<Metadata>,
+    post_index_by_epoch: BTreeMap<i64, usize>,
+    post_sequence_number_by_index: Vec<Option<usize>>,
     separated_refs_by_book: HashMap<&'static str, BookReferences1>,
     refs_by_book: HashMap<&'static str, BookReferences>,
 }

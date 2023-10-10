@@ -3,12 +3,14 @@ use crate::hugo::{format_href, write_table, Create, Header, Metadata};
 use crate::util::insert_in_order;
 use anyhow::Result;
 use itertools::Itertools;
+use std::collections::BTreeMap;
 use std::{
     cmp::Ordering,
     collections::{hash_map, HashMap},
     fmt::{self, Display, Formatter},
     io::{self, Write},
 };
+use time::{format_description::well_known::iso8601::Iso8601, OffsetDateTime};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 // a post with just one chapters worth of references
@@ -176,18 +178,23 @@ impl AllReferences {
     pub fn new() -> Self {
         AllReferences {
             metadata: Vec::new(),
+            post_index_by_epoch: BTreeMap::new(),
+            post_sequence_number_by_index: Vec::new(),
             separated_refs_by_book: HashMap::new(),
             refs_by_book: HashMap::new(),
         }
     }
 
-    pub fn tabulate(&mut self, c: Box<dyn Create>) -> Result<()> {
+    pub fn tabulate(&mut self, c: Box<dyn Create>, with_sequence_numbers: bool) -> Result<()> {
+        if with_sequence_numbers {
+            self.calculate_post_sequence_numbers();
+        }
         self.coelesce();
         // useful for diagnostics:
         //self.dump_repeats(io::stdout())?;
 
         let mut w = Writer::new(c);
-        w.write_references(self)?;
+        w.write_references(self, with_sequence_numbers)?;
 
         Ok(())
     }
@@ -195,7 +202,18 @@ impl AllReferences {
     // insert the post references separately and return a stable reference to its metadata
     pub fn insert(&mut self, metadata: Metadata, refs: References) -> &Metadata {
         self.metadata.push(metadata);
+        self.post_sequence_number_by_index.push(None);
+
         let post_index = self.metadata.len() - 1;
+        let post_header = &self.metadata.last().unwrap().header;
+
+        if let Some(epoch) = post_header.date.as_ref().and_then(|date| {
+            OffsetDateTime::parse(date.as_str(), &Iso8601::DEFAULT)
+                .ok()
+                .map(|date| date.unix_timestamp())
+        }) {
+            self.post_index_by_epoch.insert(epoch, post_index);
+        }
 
         for (book, cvs) in refs.into_iter() {
             for cv in cvs.into_iter() {
@@ -215,7 +233,13 @@ impl AllReferences {
         self.metadata.last().unwrap() // always exists
     }
 
-    pub fn coelesce(&mut self) {
+    fn calculate_post_sequence_numbers(&mut self) {
+        for (sequence_number, (_, post_index)) in self.post_index_by_epoch.iter().enumerate() {
+            self.post_sequence_number_by_index[*post_index] = Some(sequence_number);
+        }
+    }
+
+    fn coelesce(&mut self) {
         self.refs_by_book = HashMap::<&str, BookReferences>::from_iter(
             self.separated_refs_by_book
                 .drain()
@@ -289,6 +313,7 @@ impl Writer {
         abbrev: &str,
         refs: &[PostReferences],
         posts: &AllReferences,
+        with_sequence_numbers: bool,
     ) -> anyhow::Result<String> {
         let h = Header::new(book, Self::BOOK_REFS_DESCRIPTION);
         self.c.create_leaf(&h).and_then(|(mut f, url)| {
@@ -299,7 +324,15 @@ impl Writer {
                 .iter()
                 .map(|r| {
                     let m = &posts.metadata[r.post_index];
-                    vec![r.to_string(), m.format_href()]
+                    let sequence_number = &posts.post_sequence_number_by_index[r.post_index];
+                    vec![
+                        r.to_string(),
+                        m.format_href(if with_sequence_numbers {
+                            sequence_number
+                        } else {
+                            &None
+                        }),
+                    ]
                 })
                 .collect::<Vec<Vec<String>>>();
 
@@ -315,10 +348,12 @@ impl Writer {
         book_abbrev_iter: impl Iterator<Item = (&'static str, &'static str)>,
         hrefs: &mut Vec<String>,
         posts: &AllReferences,
+        with_sequence_numbers: bool,
     ) -> anyhow::Result<()> {
         for (book, abbrev) in book_abbrev_iter {
             if let Some(refs) = posts.refs_by_book.get(book) {
-                let href = self.write_book_refs(book, abbrev, &refs.0, posts)?;
+                let href =
+                    self.write_book_refs(book, abbrev, &refs.0, posts, with_sequence_numbers)?;
                 hrefs.push(href);
             }
         }
@@ -341,12 +376,21 @@ impl Writer {
         Ok(())
     }
 
-    pub fn write_references(&mut self, posts: &AllReferences) -> anyhow::Result<()> {
+    pub fn write_references(
+        &mut self,
+        posts: &AllReferences,
+        with_sequence_numbers: bool,
+    ) -> anyhow::Result<()> {
         self.c.create_branch().and_then(|f| {
             for testament in Testament::all() {
                 let mut hrefs = Vec::new();
 
-                self.write_refs(testament.books_with_abbrev(), &mut hrefs, posts)?;
+                self.write_refs(
+                    testament.books_with_abbrev(),
+                    &mut hrefs,
+                    posts,
+                    with_sequence_numbers,
+                )?;
                 self.write_grid(&f, testament.name(), &hrefs)?;
             }
 
