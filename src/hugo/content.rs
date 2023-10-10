@@ -66,7 +66,11 @@ impl Metadata {
         let title = self.header.title.as_deref().unwrap_or("Unknown");
         match sequence_number {
             Some(sequence_number) => format_href(
-                format!("{} #{}", title, sequence_number).as_str(),
+                format!(
+                    r###"{}<span style="font-size:smaller; padding-left:0.5em;">#{}</span>"###,
+                    title, sequence_number
+                )
+                .as_str(),
                 &self.url,
             ),
             None => format_href(title, &self.url),

@@ -234,8 +234,8 @@ impl AllReferences {
     }
 
     fn calculate_post_sequence_numbers(&mut self) {
-        for (sequence_number, (_, post_index)) in self.post_index_by_epoch.iter().enumerate() {
-            self.post_sequence_number_by_index[*post_index] = Some(sequence_number);
+        for (i, (_, post_index)) in self.post_index_by_epoch.iter().enumerate() {
+            self.post_sequence_number_by_index[*post_index] = Some(i + 1);
         }
     }
 
