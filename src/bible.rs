@@ -127,7 +127,7 @@ impl fmt::Display for VSpans {
         write!(
             f,
             "{}",
-            Itertools::intersperse(self.0.iter().map(|s| s.to_string()), ",".to_string())
+            Itertools::intersperse(self.0.iter().map(|s| s.to_string()), ",\u{200A}".to_string())
                 .collect::<String>()
         )
     }
